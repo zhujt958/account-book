@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="记账本">
+    <meta name="theme-color" content="#4CAF50">
+    <title>记账本</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+        :root{
+            --primary:#4CAF50;--primary-light:#81C784;--primary-dark:#388E3C;
+            --expense:#ff7043;--income:#66BB6A;
+            --bg:#f5f7fa;--card-bg:#ffffff;
+            --text-primary:#2d3436;--text-secondary:#636e72;--text-hint:#b2bec3;
+            --border:#ecf0f1;
+            --shadow:0 2px 12px rgba(0,0,0,0.06);
+            --radius:16px;
+            --safe-top:env(safe-area-inset-top,0px);
+            --safe-bottom:env(safe-area-inset-bottom,0px);
+        }
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text-primary);line-height:1.6;-webkit-font-smoothing:antialiased;padding-bottom:calc(80px + var(--safe-bottom));overflow-x:hidden}
+
+        /* 顶部导航 */
+        .header{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:white;padding:calc(20px + var(--safe-top)) 20px 24px;position:sticky;top:0;z-index:100}
+        .header h1{font-size:20px;font-weight:600;margin-bottom:4px}
+        .header .subtitle{font-size:13px;opacity:0.85}
+        .month-selector{display:flex;align-items:center;justify-content:space-between;margin-top:16px;background:rgba(255,255,255,0.15);border-radius:12px;padding:10px 16px}
+        .month-selector button{background:rgba(255,255,255,0.2);border:none;color:white;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s}
+        .month-selector button:active{background:rgba(255,255,255,0.35)}
+        .month-display{font-size:17px;font-weight:600}
+
+        /* 概览卡片 */
+        .overview{margin:-16px 16px 0;background:var(--card-bg);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;position:relative;z-index:10}
+        .overview-row{display:flex;justify-content:space-between;gap:12px}
+        .overview-item{flex:1;text-align:center}
+        .overview-item .label{font-size:12px;color:var(--text-hint);margin-bottom:6px}
+        .overview-item .value{font-size:20px;font-weight:700}
+        .overview-item.income .value{color:var(--income)}
+        .overview-item.expense .value{color:var(--expense)}
+        .overview-item.balance .value{color:var(--primary)}
+
+        /* 图表区 */
+        .section{margin:20px 16px 0}
+        .section-title{font-size:15px;font-weight:600;color:var(--text-secondary);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+        .chart-card{background:var(--card-bg);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}
+        .pie-chart-wrap{position:relative;width:180px;height:180px;margin:0 auto 16px}
+        .pie-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
+        .pie-center .label{font-size:11px;color:var(--text-hint)}
+        .pie-center .value{font-size:18px;font-weight:700;color:var(--expense)}
+        .legend-list{width:100%}
+        .legend-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)}
+        .legend-item:last-child{border-bottom:none}
+        .legend-left{display:flex;align-items:center;gap:8px}
+        .legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+        .legend-name{font-size:14px;color:var(--text-primary)}
+        .legend-right{text-align:right}
+        .legend-amount{font-size:14px;font-weight:600;color:var(--text-primary)}
+        .legend-percent{font-size:11px;color:var(--text-hint)}
+        .empty-chart{text-align:center;padding:40px 0;color:var(--text-hint);font-size:14px}
+        .chart-tabs{display:flex;gap:0;margin-bottom:16px;background:var(--bg);border-radius:10px;padding:3px}
+        .chart-tab{flex:1;padding:8px;border:none;background:transparent;border-radius:8px;font-size:13px;font-weight:500;color:var(--text-hint);cursor:pointer;transition:all 0.2s}
+        .chart-tab.active{background:var(--card-bg);color:var(--primary);box-shadow:0 1px 4px rgba(0,0,0,0.08)}
+
+        /* 明细列表 */
+        .record-list{background:var(--card-bg);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+        .record-item{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s}
+        .record-item:active{background:#f8f9fa}
+        .record-item:last-child{border-bottom:none}
+        .record-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-right:12px;flex-shrink:0}
+        .record-icon.expense{background:#fff3e0}
+        .record-icon.income{background:#e8f5e9}
+        .record-info{flex:1;min-width:0}
+        .record-category{font-size:15px;font-weight:500;color:var(--text-primary);margin-bottom:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+        .record-tag-badge{font-size:10px;padding:1px 8px;border-radius:10px;font-weight:400}
+        .record-meta{font-size:12px;color:var(--text-hint);display:flex;gap:8px;align-items:center}
+        .record-note{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .record-amount{font-size:16px;font-weight:700;flex-shrink:0}
+        .record-amount.expense{color:var(--expense)}
+        .record-amount.income{color:var(--income)}
+        .empty-list{text-align:center;padding:60px 20px;color:var(--text-hint)}
+        .empty-list .icon{font-size:48px;margin-bottom:12px;opacity:0.3}
+
+        /* 底部导航 */
+        .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--card-bg);box-shadow:0 -2px 12px rgba(0,0,0,0.06);display:flex;padding:8px 0 calc(8px + var(--safe-bottom));z-index:200}
+        .nav-item{flex:1;text-align:center;padding:8px 0;color:var(--text-hint);font-size:11px;cursor:pointer;transition:color 0.2s}
+        .nav-item.active{color:var(--primary)}
+        .nav-icon{font-size:20px;margin-bottom:2px;display:block;height:22px;display:flex;align-items:center;justify-content:center}
+        .nav-icon svg{width:22px;height:22px;fill:currentColor}
+
+        /* FAB */
+        .fab{position:fixed;bottom:calc(90px + var(--safe-bottom));right:20px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:white;border:none;font-size:28px;box-shadow:0 4px 16px rgba(76,175,80,0.4);cursor:pointer;z-index:150;display:flex;align-items:center;justify-content:center;transition:transform 0.2s}
+        .fab:active{transform:scale(0.92)}
+
+        /* 模态框 */
+        .modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:300;align-items:flex-end;justify-content:center}
+        .modal-overlay.show{display:flex}
+        .modal{background:var(--card-bg);border-radius:20px 20px 0 0;width:100%;max-width:500px;padding:20px 20px calc(20px + var(--safe-bottom));animation:slideUp 0.3s ease;max-height:90vh;overflow-y:auto}
+        @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+        .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+        .modal-title{font-size:18px;font-weight:600}
+        .modal-close{background:none;border:none;font-size:24px;color:var(--text-hint);cursor:pointer;padding:4px 8px}
+
+        /* 表单 */
+        .form-group{margin-bottom:18px}
+        .form-label{font-size:13px;color:var(--text-secondary);margin-bottom:8px;display:block;font-weight:500}
+        .type-toggle{display:flex;gap:0;border-radius:12px;overflow:hidden;border:2px solid var(--border)}
+        .type-toggle button{flex:1;padding:12px;border:none;background:white;font-size:15px;font-weight:500;color:var(--text-secondary);cursor:pointer;transition:all 0.2s}
+        .type-toggle button.active.expense{background:var(--expense);color:white}
+        .type-toggle button.active.income{background:var(--income);color:white}
+        .form-input,.form-select,.form-textarea{width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:12px;font-size:15px;font-family:inherit;color:var(--text-primary);background:white;transition:border-color 0.2s}
+        .form-input:focus,.form-select:focus,.form-textarea:focus{outline:none;border-color:var(--primary)}
+        .form-textarea{resize:none;height:60px}
+        .category-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+        .category-btn{padding:10px 4px;border:2px solid var(--border);border-radius:12px;background:white;font-size:12px;color:var(--text-secondary);cursor:pointer;transition:all 0.2s;text-align:center;position:relative}
+        .category-btn .cat-icon{font-size:20px;display:block;margin-bottom:4px}
+        .category-btn.active{border-color:var(--primary);background:#e8f5e9;color:var(--primary-dark)}
+        .category-btn .cat-delete{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#e74c3c;color:white;font-size:11px;display:none;align-items:center;justify-content:center;border:none;cursor:pointer;line-height:1}
+        .category-btn.custom .cat-delete{display:flex}
+        .tag-grid{display:flex;flex-wrap:wrap;gap:8px}
+        .tag-btn{padding:8px 16px;border:2px solid var(--border);border-radius:20px;background:white;font-size:13px;color:var(--text-secondary);cursor:pointer;transition:all 0.2s;position:relative}
+        .tag-btn.active{border-color:var(--primary);background:#e8f5e9;color:var(--primary-dark)}
+        .tag-btn .tag-delete{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#e74c3c;color:white;font-size:11px;display:none;align-items:center;justify-content:center;border:none;cursor:pointer;line-height:1}
+        .tag-btn.custom .tag-delete{display:flex}
+        .add-cat-btn{padding:10px 4px;border:2px dashed var(--border);border-radius:12px;background:transparent;font-size:12px;color:var(--text-hint);cursor:pointer;transition:all 0.2s;text-align:center}
+        .add-cat-btn:active{border-color:var(--primary);color:var(--primary)}
+        .add-cat-btn .cat-icon{font-size:20px;display:block;margin-bottom:4px}
+        .add-tag-btn{padding:8px 16px;border:2px dashed var(--border);border-radius:20px;background:transparent;font-size:13px;color:var(--text-hint);cursor:pointer;transition:all 0.2s}
+        .add-tag-btn:active{border-color:var(--primary);color:var(--primary)}
+        .form-actions{display:flex;gap:12px;margin-top:24px}
+        .btn{flex:1;padding:14px;border:none;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;transition:opacity 0.2s}
+        .btn:active{opacity:0.8}
+        .btn-primary{background:var(--primary);color:white}
+        .btn-danger{background:#ffebee;color:#c62828;border:2px solid #ffcdd2}
+        .btn-secondary{background:var(--border);color:var(--text-secondary)}
+
+        /* 设置页 */
+        .settings-card{background:var(--card-bg);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:16px}
+        .settings-item{display:flex;align-items:center;justify-content:space-between;padding:16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s}
+        .settings-item:active{background:#f8f9fa}
+        .settings-item:last-child{border-bottom:none}
+        .settings-item-left{display:flex;align-items:center;gap:12px}
+        .settings-item-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;background:var(--bg)}
+        .settings-item-label{font-size:15px;color:var(--text-primary)}
+        .settings-item-value{font-size:13px;color:var(--text-hint)}
+        .settings-item-arrow{color:var(--text-hint);font-size:18px}
+
+        /* 存钱计划页 */
+        .plan-summary{display:flex;gap:12px;margin:0 16px}
+        .plan-summary-card{flex:1;background:var(--card-bg);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;text-align:center}
+        .plan-summary-card .num{font-size:28px;font-weight:700;margin-bottom:4px}
+        .plan-summary-card .lbl{font-size:12px;color:var(--text-hint)}
+        .plan-summary-card.done .num{color:var(--primary)}
+        .plan-summary-card.ongoing .num{color:#42a5f5}
+        .plan-summary-card.total .num{color:var(--text-primary)}
+        .plan-list{margin:20px 16px 0}
+        .plan-card{background:var(--card-bg);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-bottom:14px;cursor:pointer;transition:transform 0.15s}
+        .plan-card:active{transform:scale(0.98)}
+        .plan-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+        .plan-card-title{font-size:16px;font-weight:600;color:var(--text-primary);display:flex;align-items:center;gap:6px}
+        .plan-card-status{font-size:11px;padding:2px 10px;border-radius:20px;font-weight:500}
+        .plan-card-status.ongoing{background:#e3f2fd;color:#1976d2}
+        .plan-card-status.done{background:#e8f5e9;color:#388E3C}
+        .plan-card-amounts{display:flex;justify-content:space-between;font-size:13px;color:var(--text-secondary);margin-bottom:10px}
+        .plan-card-amounts .current{font-weight:600;color:var(--primary)}
+        .plan-card-amounts .target{color:var(--text-hint)}
+        .progress-bar{height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:8px}
+        .progress-fill{height:100%;border-radius:4px;transition:width 0.4s ease}
+        .progress-fill.ongoing{background:linear-gradient(90deg,#42a5f5,#1e88e5)}
+        .progress-fill.done{background:linear-gradient(90deg,var(--primary-light),var(--primary-dark))}
+        .plan-card-footer{display:flex;justify-content:space-between;font-size:12px;color:var(--text-hint)}
+        .plan-card-quick{display:flex;gap:8px;margin-top:12px}
+        .plan-card-quick button{flex:1;padding:8px;border:none;border-radius:10px;font-size:13px;font-weight:500;cursor:pointer;transition:opacity 0.2s}
+        .plan-card-quick button:active{opacity:0.7}
+        .quick-deposit{background:#e3f2fd;color:#1976d2}
+        .quick-done{background:#e8f5e9;color:#388E3C}
+
+        /* 页面切换 */
+        .page{display:none}
+        .page.active{display:block}
+
+        /* Toast */
+        .toast{position:fixed;top:calc(80px + var(--safe-top));left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;padding:10px 24px;border-radius:24px;font-size:14px;z-index:400;opacity:0;transition:opacity 0.3s;pointer-events:none;white-space:nowrap}
+        .toast.show{opacity:1}
+
+        /* 确认对话框 */
+        .confirm-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:500;align-items:center;justify-content:center}
+        .confirm-overlay.show{display:flex}
+        .confirm-dialog{background:white;border-radius:16px;padding:24px;width:80%;max-width:320px;text-align:center}
+        .confirm-dialog .title{font-size:17px;font-weight:600;margin-bottom:8px}
+        .confirm-dialog .msg{font-size:14px;color:var(--text-secondary);margin-bottom:20px}
+        .confirm-dialog .btns{display:flex;gap:12px}
+        .confirm-dialog .btns .btn{padding:10px}
+
+        /* 输入对话框（用于添加自定义分类/标签） */
+        .input-dialog-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:500;align-items:center;justify-content:center}
+        .input-dialog-overlay.show{display:flex}
+        .input-dialog{background:white;border-radius:16px;padding:24px;width:85%;max-width:340px}
+        .input-dialog .title{font-size:17px;font-weight:600;margin-bottom:16px;text-align:center}
+        .input-dialog input{width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:12px;font-size:15px;margin-bottom:8px}
+        .input-dialog input:focus{outline:none;border-color:var(--primary)}
+        .input-dialog .icon-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;max-height:120px;overflow-y:auto}
+        .input-dialog .icon-pick{width:36px;height:36px;border-radius:10px;border:2px solid var(--border);background:white;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s}
+        .input-dialog .icon-pick.active{border-color:var(--primary);background:#e8f5e9}
+    </style>
+</head>
+<body>
+
+<!-- ===== 页面：首页 ===== -->
+<div id="page-home" class="page active">
+    <div class="header">
+        <h1>📖 记账本</h1>
+        <div class="subtitle">记录每一笔，掌控每个月</div>
+        <div class="month-selector">
+            <button onclick="changeMonth(-1)">‹</button>
+            <span class="month-display" id="monthDisplay">2026年7月</span>
+            <button onclick="changeMonth(1)">›</button>
+        </div>
+    </div>
+    <div class="overview">
+        <div class="overview-row">
+            <div class="overview-item income"><div class="label">收入</div><div class="value" id="totalIncome">¥0.00</div></div>
+            <div class="overview-item expense"><div class="label">支出</div><div class="value" id="totalExpense">¥0.00</div></div>
+            <div class="overview-item balance"><div class="label">结余</div><div class="value" id="totalBalance">¥0.00</div></div>
+        </div>
+    </div>
+    <div class="section">
+        <div class="section-title"><span>支出分析</span></div>
+        <div class="chart-card">
+            <div class="chart-tabs">
+                <button class="chart-tab active" onclick="switchChartTab('category', this)">按分类</button>
+                <button class="chart-tab" onclick="switchChartTab('tag', this)">按标签</button>
+            </div>
+            <div id="chartArea"></div>
+        </div>
+    </div>
+    <div class="section">
+        <div class="section-title"><span>收支明细</span><span id="recordCount" style="font-size:12px;color:var(--text-hint);font-weight:400"></span></div>
+        <div class="record-list" id="recordList"></div>
+    </div>
+</div>
+
+<!-- ===== 页面：存钱计划 ===== -->
+<div id="page-plans" class="page">
+    <div class="header">
+        <h1>🎯 存钱计划</h1>
+        <div class="subtitle">为每个目标努力存钱</div>
+    </div>
+    <div style="padding:20px 16px 0">
+        <div class="plan-summary">
+            <div class="plan-summary-card total"><div class="num" id="planTotal">0</div><div class="lbl">全部计划</div></div>
+            <div class="plan-summary-card ongoing"><div class="num" id="planOngoing">0</div><div class="lbl">进行中</div></div>
+            <div class="plan-summary-card done"><div class="num" id="planDone">0</div><div class="lbl">已完成</div></div>
+        </div>
+        <div style="margin:16px 0;background:var(--card-bg);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;display:flex;justify-content:space-between;align-items:center">
+            <div><div style="font-size:13px;color:var(--text-hint);margin-bottom:4px">累计已存</div><div style="font-size:22px;font-weight:700;color:var(--primary)" id="planTotalSaved">¥0.00</div></div>
+            <div style="text-align:right"><div style="font-size:13px;color:var(--text-hint);margin-bottom:4px">目标总额</div><div style="font-size:22px;font-weight:700;color:var(--text-secondary)" id="planTotalTarget">¥0.00</div></div>
+        </div>
+    </div>
+    <div class="plan-list" id="planList"></div>
+</div>
+
+<!-- ===== 页面：设置 ===== -->
+<div id="page-settings" class="page">
+    <div class="header">
+        <h1>⚙️ 设置</h1>
+        <div class="subtitle">数据管理与关于</div>
+    </div>
+    <div style="padding:20px 16px">
+        <div class="settings-card">
+            <div class="settings-item" onclick="exportData()"><div class="settings-item-left"><div class="settings-item-icon">📤</div><div class="settings-item-label">导出数据</div></div><div class="settings-item-arrow">›</div></div>
+            <div class="settings-item" onclick="document.getElementById('importFile').click()"><div class="settings-item-left"><div class="settings-item-icon">📥</div><div class="settings-item-label">导入数据</div></div><div class="settings-item-arrow">›</div></div>
+            <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+        </div>
+        <div class="settings-card">
+            <div class="settings-item" onclick="showClearConfirm()"><div class="settings-item-left"><div class="settings-item-icon" style="background:#ffebee">🗑️</div><div class="settings-item-label" style="color:#c62828">清空所有数据</div></div><div class="settings-item-arrow">›</div></div>
+        </div>
+        <div class="settings-card">
+            <div class="settings-item"><div class="settings-item-left"><div class="settings-item-icon">📱</div><div class="settings-item-label">添加到主屏幕</div></div><div class="settings-item-value">像App一样使用</div></div>
+            <div class="settings-item"><div class="settings-item-left"><div class="settings-item-icon">💾</div><div class="settings-item-label">数据存储</div></div><div class="settings-item-value">本地浏览器</div></div>
+            <div class="settings-item"><div class="settings-item-left"><div class="settings-item-icon">ℹ️</div><div class="settings-item-label">版本</div></div><div class="settings-item-value">v2.0.0</div></div>
+        </div>
+        <div style="text-align:center;padding:20px;color:var(--text-hint);font-size:12px">记账本 · 让生活更有条理</div>
+    </div>
+</div>
+
+<!-- 底部导航 -->
+<div class="bottom-nav">
+    <div class="nav-item active" onclick="switchPage('home', this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></span>首页</div>
+    <div class="nav-item" onclick="switchPage('plans', this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 2h2v2h-2V5zm0 4h2v2h-2V9zm0 4h2v2h-2v-2zm-4-8h2v2H8V5zm0 4h2v2H8V9zm0 4h2v2H8v-2zM5 17h14v2H5v-2zm2-12h2v2H7V5zm0 4h2v2H7V9zm0 4h2v2H7v-2z"/></svg></span>计划</div>
+    <div class="nav-item" onclick="switchPage('settings', this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84a.484.484 0 0 0-.48.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.488.488 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.63-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.27.41.48.41h3.84c.24 0 .44-.17.48-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.6a3.6 3.6 0 0 1 0 7z"/></svg></span>设置</div>
+</div>
+
+<!-- FAB -->
+<button class="fab" id="fabBtn" onclick="onFabClick()">+</button>
+
+<!-- 添加/编辑记录模态框 -->
+<div class="modal-overlay" id="recordModal">
+    <div class="modal">
+        <div class="modal-header"><div class="modal-title" id="modalTitle">添加记录</div><button class="modal-close" onclick="closeModal()">×</button></div>
+        <input type="hidden" id="editId">
+        <div class="form-group">
+            <label class="form-label">类型</label>
+            <div class="type-toggle">
+                <button id="btnExpense" class="active expense" onclick="selectType('expense')">支出</button>
+                <button id="btnIncome" class="income" onclick="selectType('income')">收入</button>
+            </div>
+        </div>
+        <div class="form-group"><label class="form-label">金额</label><input type="number" class="form-input" id="inputAmount" placeholder="0.00" step="0.01" min="0" inputmode="decimal"></div>
+        <div class="form-group"><label class="form-label">日期</label><input type="date" class="form-input" id="inputDate"></div>
+        <div class="form-group"><label class="form-label">分类</label><div class="category-grid" id="categoryGrid"></div></div>
+        <div class="form-group" id="tagGroup"><label class="form-label">支出标签</label><div class="tag-grid" id="tagGrid"></div></div>
+        <div class="form-group"><label class="form-label">备注</label><textarea class="form-textarea" id="inputNote" placeholder="选填，添加一些说明..." maxlength="100"></textarea></div>
+        <div class="form-actions" id="formActions"><button class="btn btn-primary" onclick="saveRecord()">保存</button></div>
+    </div>
+</div>
+
+<!-- 存钱计划模态框 -->
+<div class="modal-overlay" id="planModal">
+    <div class="modal">
+        <div class="modal-header"><div class="modal-title" id="planModalTitle">新建存钱计划</div><button class="modal-close" onclick="closePlanModal()">×</button></div>
+        <input type="hidden" id="planEditId">
+        <div class="form-group"><label class="form-label">计划名称</label><input type="text" class="form-input" id="planName" placeholder="如：旅行基金、新手机..." maxlength="20"></div>
+        <div class="form-group"><label class="form-label">目标金额</label><input type="number" class="form-input" id="planTarget" placeholder="0.00" step="0.01" min="0" inputmode="decimal"></div>
+        <div class="form-group"><label class="form-label">已存金额</label><input type="number" class="form-input" id="planCurrent" placeholder="0.00" step="0.01" min="0" inputmode="decimal"></div>
+        <div class="form-group"><label class="form-label">目标日期（选填）</label><input type="date" class="form-input" id="planDeadline"></div>
+        <div class="form-group"><label class="form-label">备注（选填）</label><textarea class="form-textarea" id="planNote" placeholder="给自己一点动力..." maxlength="100"></textarea></div>
+        <div class="form-actions" id="planFormActions"><button class="btn btn-primary" onclick="savePlan()">创建计划</button></div>
+    </div>
+</div>
+
+<!-- 存钱计划详情模态框 -->
+<div class="modal-overlay" id="planDetailModal">
+    <div class="modal">
+        <div class="modal-header"><div class="modal-title">计划详情</div><button class="modal-close" onclick="closePlanDetail()">×</button></div>
+        <div id="planDetailContent"></div>
+        <div class="form-group" id="depositGroup" style="margin-top:16px">
+            <label class="form-label">存入金额</label>
+            <div style="display:flex;gap:8px"><input type="number" class="form-input" id="depositAmount" placeholder="0.00" step="0.01" min="0" inputmode="decimal" style="flex:1"><button class="btn btn-primary" style="flex:0 0 auto;padding:12px 20px" onclick="addDeposit()">存入</button></div>
+        </div>
+        <div class="form-actions" style="margin-top:20px"><button class="btn btn-danger" onclick="deletePlan()">删除计划</button><button class="btn btn-secondary" onclick="editPlanFromDetail()">编辑</button></div>
+    </div>
+</div>
+
+<!-- 确认对话框 -->
+<div class="confirm-overlay" id="confirmOverlay">
+    <div class="confirm-dialog">
+        <div class="title" id="confirmTitle">确认</div>
+        <div class="msg" id="confirmMsg"></div>
+        <div class="btns"><button class="btn btn-secondary" onclick="hideConfirm()">取消</button><button class="btn btn-primary" id="confirmOkBtn">确定</button></div>
+    </div>
+</div>
+
+<!-- 输入对话框（自定义分类/标签） -->
+<div class="input-dialog-overlay" id="inputDialogOverlay">
+    <div class="input-dialog">
+        <div class="title" id="inputDialogTitle">添加分类</div>
+        <input type="text" id="customInput" placeholder="输入名称..." maxlength="10">
+        <div class="icon-row" id="iconPicker"></div>
+        <div class="btns" style="display:flex;gap:12px"><button class="btn btn-secondary" onclick="hideInputDialog()">取消</button><button class="btn btn-primary" id="inputDialogOkBtn">确定</button></div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== 数据层 ====================
+const STORAGE_KEY = 'account_book_records';
+const PLANS_KEY = 'account_book_plans';
+const CATEGORIES_KEY = 'account_book_categories';
+const TAGS_KEY = 'account_book_tags';
+
+const DEFAULT_CATEGORIES = {
+    expense: [
+        {name:'餐饮',icon:'🍚',custom:false},{name:'购物',icon:'🛍️',custom:false},
+        {name:'娱乐',icon:'🎮',custom:false},{name:'提升',icon:'📚',custom:false},
+        {name:'交通',icon:'🚌',custom:false},{name:'其它',icon:'📦',custom:false}
+    ],
+    income: [
+        {name:'工资',icon:'💰',custom:false},{name:'兼职',icon:'💼',custom:false},
+        {name:'理财',icon:'📈',custom:false},{name:'其它',icon:'✨',custom:false}
+    ]
+};
+
+const DEFAULT_TAGS = [
+    {name:'生存必要支出',custom:false},{name:'浮动弹性支出',custom:false}
+];
+
+const ICON_OPTIONS = ['🍚','🛍️','🎮','📚','🚌','📦','💰','💼','📈','✨','🏠','💊','📱','🧧','👕','💄','☕','🍿','✈️','🎁','🐾','💻','🏋️','🎵','📝','🔧','🚗','⚡','🩺','🎓'];
+const PIE_COLORS = ['#ff7043','#ffa726','#ab47bc','#5c6bc0','#26a69a','#66bb6a','#ec407a','#42a5f5','#8d6e63','#78909c','#26c6da','#9ccc65'];
+
+let allRecords = [];
+let allPlans = [];
+let customCategories = {expense:[], income:[]};
+let customTags = [];
+let currentType = 'expense';
+let selectedCategory = '';
+let selectedTag = '';
+let viewYear, viewMonth;
+let chartTab = 'category';
+
+// ==================== 初始化 ====================
+function init() {
+    const now = new Date();
+    viewYear = now.getFullYear();
+    viewMonth = now.getMonth() + 1;
+    loadData();
+    loadPlans();
+    loadCustomData();
+    renderAll();
+    document.getElementById('inputDate').value = formatDate(now);
+}
+
+function loadData() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    allRecords = raw ? JSON.parse(raw) : [];
+}
+function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(allRecords)); }
+
+function loadPlans() {
+    const raw = localStorage.getItem(PLANS_KEY);
+    allPlans = raw ? JSON.parse(raw) : [];
+}
+function savePlans() { localStorage.setItem(PLANS_KEY, JSON.stringify(allPlans)); }
+
+function loadCustomData() {
+    const catRaw = localStorage.getItem(CATEGORIES_KEY);
+    customCategories = catRaw ? JSON.parse(catRaw) : {expense:[], income:[]};
+    const tagRaw = localStorage.getItem(TAGS_KEY);
+    customTags = tagRaw ? JSON.parse(tagRaw) : [];
+}
+function saveCustomData() {
+    localStorage.setItem(CATEGORIES_KEY, JSON.stringify(customCategories));
+    localStorage.setItem(TAGS_KEY, JSON.stringify(customTags));
+}
+
+function getAllCategories(type) {
+    return [...DEFAULT_CATEGORIES[type], ...customCategories[type]];
+}
+function getAllTags() {
+    return [...DEFAULT_TAGS, ...customTags];
+}
+function findCategory(type, name) {
+    return getAllCategories(type).find(c => c.name === name) || {icon:'📝'};
+}
+
+function formatDate(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
+// ==================== 页面切换 ====================
+function switchPage(page, el) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    el.classList.add('active');
+    window.scrollTo(0, 0);
+    if (page === 'plans') renderPlans();
+}
+
+function onFabClick() {
+    if (document.getElementById('page-plans').classList.contains('active')) openAddPlanModal();
+    else openAddModal();
+}
+
+// ==================== 月份切换 ====================
+function changeMonth(delta) {
+    viewMonth += delta;
+    if (viewMonth > 12) { viewMonth = 1; viewYear++; }
+    if (viewMonth < 1) { viewMonth = 12; viewYear--; }
+    renderAll();
+}
+
+// ==================== 图表 Tab 切换 ====================
+function switchChartTab(tab, el) {
+    chartTab = tab;
+    document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    const records = getMonthRecords(viewYear, viewMonth);
+    renderChart(records);
+}
+
+// ==================== 渲染 ====================
+function renderAll() {
+    document.getElementById('monthDisplay').textContent = `${viewYear}年${viewMonth}月`;
+    const records = getMonthRecords(viewYear, viewMonth);
+    renderOverview(records);
+    renderChart(records);
+    renderRecordList(records);
+}
+
+function getMonthRecords(year, month) {
+    const prefix = `${year}-${String(month).padStart(2,'0')}`;
+    return allRecords.filter(r => r.date.startsWith(prefix)).sort((a,b) => {
+        if (a.date !== b.date) return b.date.localeCompare(a.date);
+        return (b.createdAt || 0) - (a.createdAt || 0);
+    });
+}
+
+function renderOverview(records) {
+    let income = 0, expense = 0;
+    records.forEach(r => { r.type === 'income' ? income += r.amount : expense += r.amount; });
+    document.getElementById('totalIncome').textContent = '¥' + income.toFixed(2);
+    document.getElementById('totalExpense').textContent = '¥' + expense.toFixed(2);
+    document.getElementById('totalBalance').textContent = '¥' + (income - expense).toFixed(2);
+}
+
+// ==================== 饼图 ====================
+function renderChart(records) {
+    const expenses = records.filter(r => r.type === 'expense');
+    const chartArea = document.getElementById('chartArea');
+
+    if (expenses.length === 0) {
+        chartArea.innerHTML = '<div class="empty-chart">本月暂无支出数据<br>点击右下角 + 开始记账</div>';
+        return;
+    }
+
+    // 决定按分类还是按标签汇总
+    let groupMap = {};
+    if (chartTab === 'category') {
+        expenses.forEach(r => { groupMap[r.category] = (groupMap[r.category] || 0) + r.amount; });
+    } else {
+        expenses.forEach(r => {
+            const tag = r.tag || '未标记';
+            groupMap[tag] = (groupMap[tag] || 0) + r.amount;
+        });
+    }
+
+    const groups = Object.keys(groupMap).map(k => ({name:k, amount:groupMap[k]}));
+    groups.sort((a,b) => b.amount - a.amount);
+    const total = groups.reduce((s,g) => s + g.amount, 0);
+
+    // SVG 饼图
+    const cx = 90, cy = 90, r = 70, rInner = 42;
+    let currentAngle = -90;
+    let slices = '';
+
+    // 单个分类时画完整圆环
+    if (groups.length === 1) {
+        slices = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${PIE_COLORS[0]}" stroke="#fff" stroke-width="2"/>
+                  <circle cx="${cx}" cy="${cy}" r="${rInner}" fill="white"/>`;
+    } else {
+        groups.forEach((g, i) => {
+            const angle = (g.amount / total) * 360;
+            const startAngle = currentAngle;
+            const endAngle = currentAngle + angle;
+            const x1 = cx + r * Math.cos(startAngle * Math.PI / 180);
+            const y1 = cy + r * Math.sin(startAngle * Math.PI / 180);
+            const x2 = cx + r * Math.cos(endAngle * Math.PI / 180);
+            const y2 = cy + r * Math.sin(endAngle * Math.PI / 180);
+            const x1i = cx + rInner * Math.cos(startAngle * Math.PI / 180);
+            const y1i = cy + rInner * Math.sin(startAngle * Math.PI / 180);
+            const x2i = cx + rInner * Math.cos(endAngle * Math.PI / 180);
+            const y2i = cy + rInner * Math.sin(endAngle * Math.PI / 180);
+            const largeArc = angle > 180 ? 1 : 0;
+            const color = PIE_COLORS[i % PIE_COLORS.length];
+            slices += `<path d="M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} L ${x2i} ${y2i} A ${rInner} ${rInner} 0 ${largeArc} 0 ${x1i} ${y1i} Z" fill="${color}" stroke="#fff" stroke-width="2"/>`;
+            currentAngle = endAngle;
+        });
+    }
+
+    // 图例
+    let legend = '';
+    groups.forEach((g, i) => {
+        const color = PIE_COLORS[i % PIE_COLORS.length];
+        const percent = ((g.amount / total) * 100).toFixed(1);
+        legend += `<div class="legend-item"><div class="legend-left"><div class="legend-dot" style="background:${color}"></div><div class="legend-name">${g.name}</div></div><div class="legend-right"><div class="legend-amount">¥${g.amount.toFixed(2)}</div><div class="legend-percent">${percent}%</div></div></div>`;
+    });
+
+    const centerLabel = chartTab === 'category' ? '总支出' : '总支出';
+    chartArea.innerHTML = `<div class="chart-container"><div class="pie-chart-wrap"><svg width="180" height="180" viewBox="0 0 180 180">${slices}</svg><div class="pie-center"><div class="label">${centerLabel}</div><div class="value">¥${total.toFixed(0)}</div></div></div><div class="legend-list">${legend}</div></div>`;
+}
+
+// ==================== 明细列表 ====================
+function renderRecordList(records) {
+    const list = document.getElementById('recordList');
+    document.getElementById('recordCount').textContent = records.length ? `共${records.length}笔` : '';
+    if (records.length === 0) {
+        list.innerHTML = '<div class="empty-list"><div class="icon">📝</div><div>本月暂无记录</div><div style="font-size:12px;margin-top:4px">点击右下角 + 添加第一笔</div></div>';
+        return;
+    }
+    const tagColors = {'生存必要支出':'#e3f2fd','浮动弹性支出':'#fff3e0'};
+    list.innerHTML = records.map(r => {
+        const cat = findCategory(r.type, r.category);
+        const sign = r.type === 'income' ? '+' : '-';
+        let tagBadge = '';
+        if (r.type === 'expense' && r.tag) {
+            const tc = tagColors[r.tag] || '#f3e5f5';
+            tagBadge = `<span class="record-tag-badge" style="background:${tc};color:var(--text-secondary)">${r.tag}</span>`;
+        }
+        return `<div class="record-item" onclick="openEditModal(${r.id})">
+            <div class="record-icon ${r.type}">${cat.icon}</div>
+            <div class="record-info">
+                <div class="record-category">${r.category} ${tagBadge}</div>
+                <div class="record-meta"><span>${r.date}</span>${r.note ? `<span class="record-note">${r.note}</span>` : ''}</div>
+            </div>
+            <div class="record-amount ${r.type}">${sign}¥${r.amount.toFixed(2)}</div>
+        </div>`;
+    }).join('');
+}
+
+// ==================== 添加/编辑记录 ====================
+function openAddModal() {
+    document.getElementById('modalTitle').textContent = '添加记录';
+    document.getElementById('editId').value = '';
+    document.getElementById('inputAmount').value = '';
+    document.getElementById('inputDate').value = formatDate(new Date());
+    document.getElementById('inputNote').value = '';
+    currentType = 'expense';
+    selectedTag = '';
+    selectType('expense');
+    document.getElementById('formActions').innerHTML = '<button class="btn btn-primary" onclick="saveRecord()">保存</button>';
+    document.getElementById('recordModal').classList.add('show');
+}
+
+function openEditModal(id) {
+    const record = allRecords.find(r => r.id === id);
+    if (!record) return;
+    document.getElementById('modalTitle').textContent = '编辑记录';
+    document.getElementById('editId').value = id;
+    document.getElementById('inputAmount').value = record.amount;
+    document.getElementById('inputDate').value = record.date;
+    document.getElementById('inputNote').value = record.note || '';
+    currentType = record.type;
+    selectedCategory = record.category;
+    selectedTag = record.tag || '';
+    selectType(record.type);
+    renderTagGrid();
+    document.getElementById('formActions').innerHTML = '<button class="btn btn-danger" onclick="deleteRecord()">删除</button><button class="btn btn-primary" onclick="saveRecord()">保存</button>';
+    document.getElementById('recordModal').classList.add('show');
+}
+
+function closeModal() { document.getElementById('recordModal').classList.remove('show'); }
+
+function selectType(type) {
+    currentType = type;
+    selectedCategory = '';
+    document.getElementById('btnExpense').classList.remove('active');
+    document.getElementById('btnIncome').classList.remove('active');
+    document.getElementById('btn' + type.charAt(0).toUpperCase() + type.slice(1)).classList.add('active');
+    renderCategoryGrid();
+    renderTagGrid();
+    // 收入不显示标签选择
+    document.getElementById('tagGroup').style.display = type === 'expense' ? 'block' : 'none';
+}
+
+function renderCategoryGrid() {
+    const grid = document.getElementById('categoryGrid');
+    const cats = getAllCategories(currentType);
+    let html = cats.map(c => {
+        const isCustom = c.custom;
+        return `<div class="category-btn ${selectedCategory === c.name ? 'active' : ''} ${isCustom ? 'custom' : ''}" onclick="selectCategory('${c.name}')">
+            ${isCustom ? `<button class="cat-delete" onclick="event.stopPropagation();deleteCategory('${c.name}')">×</button>` : ''}
+            <span class="cat-icon">${c.icon}</span>${c.name}
+        </div>`;
+    }).join('');
+    html += `<div class="add-cat-btn" onclick="openAddCategoryModal()"><span class="cat-icon">＋</span>自定义</div>`;
+    grid.innerHTML = html;
+}
+
+function selectCategory(name) { selectedCategory = name; renderCategoryGrid(); }
+
+function deleteCategory(name) {
+    // 检查是否有记录在使用
+    const inUse = allRecords.some(r => r.category === name && r.type === currentType);
+    if (inUse) { showToast('该分类有记录在使用，无法删除'); return; }
+    showConfirm('删除分类', `确定删除分类「${name}」吗？`, () => {
+        customCategories[currentType] = customCategories[currentType].filter(c => c.name !== name);
+        saveCustomData();
+        renderCategoryGrid();
+        showToast('已删除');
+    });
+}
+
+function renderTagGrid() {
+    const grid = document.getElementById('tagGrid');
+    const tags = getAllTags();
+    let html = tags.map(t => {
+        const isCustom = t.custom;
+        return `<div class="tag-btn ${selectedTag === t.name ? 'active' : ''} ${isCustom ? 'custom' : ''}" onclick="selectTag('${t.name}')">
+            ${isCustom ? `<button class="tag-delete" onclick="event.stopPropagation();deleteTag('${t.name}')">×</button>` : ''}
+            ${t.name}
+        </div>`;
+    }).join('');
+    html += `<div class="add-tag-btn" onclick="openAddTagModal()">+ 自定义标签</div>`;
+    grid.innerHTML = html;
+}
+
+function selectTag(name) {
+    selectedTag = selectedTag === name ? '' : name;
+    renderTagGrid();
+}
+
+function deleteTag(name) {
+    const inUse = allRecords.some(r => r.tag === name);
+    if (inUse) { showToast('该标签有记录在使用，无法删除'); return; }
+    showConfirm('删除标签', `确定删除标签「${name}」吗？`, () => {
+        customTags = customTags.filter(t => t.name !== name);
+        saveCustomData();
+        renderTagGrid();
+        showToast('已删除');
+    });
+}
+
+// ==================== 自定义分类/标签输入对话框 ====================
+let inputDialogMode = 'category';
+let selectedIcon = '📦';
+
+function openAddCategoryModal() {
+    inputDialogMode = 'category';
+    document.getElementById('inputDialogTitle').textContent = '添加自定义分类';
+    document.getElementById('customInput').value = '';
+    document.getElementById('customInput').placeholder = '输入分类名称...';
+    selectedIcon = ICON_OPTIONS[0];
+    renderIconPicker();
+    document.getElementById('inputDialogOkBtn').onclick = confirmAddCustom;
+    document.getElementById('inputDialogOverlay').classList.add('show');
+    setTimeout(() => document.getElementById('customInput').focus(), 100);
+}
+
+function openAddTagModal() {
+    inputDialogMode = 'tag';
+    document.getElementById('inputDialogTitle').textContent = '添加自定义标签';
+    document.getElementById('customInput').value = '';
+    document.getElementById('customInput').placeholder = '输入标签名称...';
+    document.getElementById('iconPicker').innerHTML = '';
+    document.getElementById('inputDialogOkBtn').onclick = confirmAddCustom;
+    document.getElementById('inputDialogOverlay').classList.add('show');
+    setTimeout(() => document.getElementById('customInput').focus(), 100);
+}
+
+function renderIconPicker() {
+    const picker = document.getElementById('iconPicker');
+    picker.innerHTML = ICON_OPTIONS.map(icon =>
+        `<div class="icon-pick ${icon === selectedIcon ? 'active' : ''}" onclick="selectIcon('${icon}')">${icon}</div>`
+    ).join('');
+}
+
+function selectIcon(icon) { selectedIcon = icon; renderIconPicker(); }
+
+function hideInputDialog() { document.getElementById('inputDialogOverlay').classList.remove('show'); }
+
+function confirmAddCustom() {
+    const name = document.getElementById('customInput').value.trim();
+    if (!name) { showToast('请输入名称'); return; }
+
+    if (inputDialogMode === 'category') {
+        const exists = getAllCategories(currentType).some(c => c.name === name);
+        if (exists) { showToast('该分类已存在'); return; }
+        customCategories[currentType].push({name, icon: selectedIcon, custom: true});
+        saveCustomData();
+        renderCategoryGrid();
+        showToast('分类已添加');
+    } else {
+        const exists = getAllTags().some(t => t.name === name);
+        if (exists) { showToast('该标签已存在'); return; }
+        customTags.push({name, custom: true});
+        saveCustomData();
+        renderTagGrid();
+        showToast('标签已添加');
+    }
+    hideInputDialog();
+}
+
+// ==================== 保存记录 ====================
+function saveRecord() {
+    const amount = parseFloat(document.getElementById('inputAmount').value);
+    const date = document.getElementById('inputDate').value;
+    const note = document.getElementById('inputNote').value.trim();
+
+    if (!amount || amount <= 0) { showToast('请输入有效金额'); return; }
+    if (!date) { showToast('请选择日期'); return; }
+    if (!selectedCategory) { showToast('请选择分类'); return; }
+
+    const editId = document.getElementById('editId').value;
+    const tagValue = currentType === 'expense' ? selectedTag : '';
+
+    if (editId) {
+        const record = allRecords.find(r => r.id === parseInt(editId));
+        if (record) {
+            record.type = currentType;
+            record.amount = amount;
+            record.date = date;
+            record.category = selectedCategory;
+            record.tag = tagValue;
+            record.note = note;
+        }
+        showToast('已更新');
+    } else {
+        const newId = allRecords.length > 0 ? Math.max(...allRecords.map(r => r.id)) + 1 : 1;
+        allRecords.push({id:newId, date, type:currentType, amount, category:selectedCategory, tag:tagValue, note, createdAt:Date.now()});
+        showToast('已添加');
+    }
+    saveData();
+    closeModal();
+    renderAll();
+}
+
+function deleteRecord() {
+    const editId = document.getElementById('editId').value;
+    if (!editId) return;
+    showConfirm('删除记录', '确定删除这条记录吗？删除后不可恢复。', () => {
+        allRecords = allRecords.filter(r => r.id !== parseInt(editId));
+        saveData();
+        closeModal();
+        renderAll();
+        showToast('已删除');
+    });
+}
+
+// ==================== 数据导入导出 ====================
+function exportData() {
+    if (allRecords.length === 0 && allPlans.length === 0) { showToast('暂无数据可导出'); return; }
+    const data = JSON.stringify({records:allRecords, plans:allPlans, customCategories, customTags}, null, 2);
+    const blob = new Blob([data], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `记账本备份_${formatDate(new Date())}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('已导出');
+}
+
+function importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            let recCount = 0, planCount = 0;
+            if (Array.isArray(data)) {
+                allRecords = data;
+                recCount = data.length;
+            } else {
+                if (data.records && Array.isArray(data.records)) { allRecords = data.records; recCount = data.records.length; }
+                if (data.plans && Array.isArray(data.plans)) { allPlans = data.plans; planCount = data.plans.length; }
+                if (data.customCategories) customCategories = data.customCategories;
+                if (data.customTags) customTags = data.customTags;
+            }
+            const msg = planCount > 0 ? `将导入 ${recCount} 条记录和 ${planCount} 个计划，是否覆盖当前数据？` : `将导入 ${recCount} 条记录，是否覆盖当前数据？`;
+            showConfirm('导入数据', msg, () => {
+                saveData(); savePlans(); saveCustomData();
+                renderAll(); renderPlans();
+                showToast('导入成功');
+            });
+        } catch(err) { showToast('文件格式错误'); }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+}
+
+function showClearConfirm() {
+    if (allRecords.length === 0 && allPlans.length === 0) { showToast('暂无数据'); return; }
+    const recCount = allRecords.length, planCount = allPlans.length;
+    const msg = planCount > 0 ? `将删除全部 ${recCount} 条记录和 ${planCount} 个计划，此操作不可恢复！` : `将删除全部 ${recCount} 条记录，此操作不可恢复！`;
+    showConfirm('清空数据', msg, () => {
+        allRecords = []; allPlans = [];
+        customCategories = {expense:[], income:[]}; customTags = [];
+        saveData(); savePlans(); saveCustomData();
+        renderAll(); renderPlans();
+        showToast('已清空');
+    });
+}
+
+// ==================== Toast & 确认框 ====================
+let toastTimer;
+function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+function showConfirm(title, msg, callback) {
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMsg').textContent = msg;
+    document.getElementById('confirmOverlay').classList.add('show');
+    document.getElementById('confirmOkBtn').onclick = () => { hideConfirm(); callback(); };
+}
+function hideConfirm() { document.getElementById('confirmOverlay').classList.remove('show'); }
+
+// 点击遮罩关闭
+document.getElementById('recordModal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+document.getElementById('confirmOverlay').addEventListener('click', function(e) { if (e.target === this) hideConfirm(); });
+document.getElementById('inputDialogOverlay').addEventListener('click', function(e) { if (e.target === this) hideInputDialog(); });
+
+// ==================== 存钱计划 ====================
+function renderPlans() {
+    const total = allPlans.length;
+    const done = allPlans.filter(p => p.current >= p.target).length;
+    const ongoing = total - done;
+    const totalSaved = allPlans.reduce((s, p) => s + p.current, 0);
+    const totalTarget = allPlans.reduce((s, p) => s + p.target, 0);
+
+    document.getElementById('planTotal').textContent = total;
+    document.getElementById('planOngoing').textContent = ongoing;
+    document.getElementById('planDone').textContent = done;
+    document.getElementById('planTotalSaved').textContent = '¥' + totalSaved.toFixed(2);
+    document.getElementById('planTotalTarget').textContent = '¥' + totalTarget.toFixed(2);
+
+    const list = document.getElementById('planList');
+    if (total === 0) {
+        list.innerHTML = '<div class="empty-list"><div class="icon">🎯</div><div>还没有存钱计划</div><div style="font-size:12px;margin-top:4px">点击右下角 + 创建第一个计划</div></div>';
+        return;
+    }
+    const sorted = [...allPlans].sort((a, b) => {
+        const aDone = a.current >= a.target ? 1 : 0;
+        const bDone = b.current >= b.target ? 1 : 0;
+        if (aDone !== bDone) return aDone - bDone;
+        return (b.createdAt || 0) - (a.createdAt || 0);
+    });
+    list.innerHTML = sorted.map(p => {
+        const isDone = p.current >= p.target;
+        const percent = Math.min(100, (p.current / p.target * 100));
+        const remainDays = p.deadline ? Math.ceil((new Date(p.deadline) - new Date()) / 86400000) : null;
+        return `<div class="plan-card" onclick="openPlanDetail(${p.id})">
+            <div class="plan-card-header">
+                <div class="plan-card-title">${isDone ? '✅' : '🎯'} ${p.name}</div>
+                <div class="plan-card-status ${isDone ? 'done' : 'ongoing'}">${isDone ? '已完成' : '进行中'}</div>
+            </div>
+            <div class="plan-card-amounts"><span class="current">¥${p.current.toFixed(2)}</span><span class="target">/ ¥${p.target.toFixed(2)}</span></div>
+            <div class="progress-bar"><div class="progress-fill ${isDone ? 'done' : 'ongoing'}" style="width:${percent}%"></div></div>
+            <div class="plan-card-footer">
+                <span>${percent.toFixed(1)}%</span>
+                ${remainDays !== null && !isDone ? (remainDays > 0 ? `<span>还剩 ${remainDays} 天</span>` : '<span style="color:var(--expense)">已逾期</span>') : (p.deadline && isDone ? '<span>已达成 🎉</span>' : '<span></span>')}
+            </div>
+            ${!isDone ? `<div class="plan-card-quick" onclick="event.stopPropagation()"><button class="quick-deposit" onclick="quickDeposit(${p.id})">+ 存入</button><button class="quick-done" onclick="quickComplete(${p.id})">标记完成</button></div>` : ''}
+        </div>`;
+    }).join('');
+}
+
+function openAddPlanModal() {
+    document.getElementById('planModalTitle').textContent = '新建存钱计划';
+    document.getElementById('planEditId').value = '';
+    document.getElementById('planName').value = '';
+    document.getElementById('planTarget').value = '';
+    document.getElementById('planCurrent').value = '';
+    document.getElementById('planDeadline').value = '';
+    document.getElementById('planNote').value = '';
+    document.getElementById('planFormActions').innerHTML = '<button class="btn btn-primary" onclick="savePlan()">创建计划</button>';
+    document.getElementById('planModal').classList.add('show');
+}
+
+function savePlan() {
+    const name = document.getElementById('planName').value.trim();
+    const target = parseFloat(document.getElementById('planTarget').value);
+    const current = parseFloat(document.getElementById('planCurrent').value) || 0;
+    const deadline = document.getElementById('planDeadline').value;
+    const note = document.getElementById('planNote').value.trim();
+    if (!name) { showToast('请输入计划名称'); return; }
+    if (!target || target <= 0) { showToast('请输入目标金额'); return; }
+
+    const editId = document.getElementById('planEditId').value;
+    if (editId) {
+        const plan = allPlans.find(p => p.id === parseInt(editId));
+        if (plan) { plan.name = name; plan.target = target; plan.current = current; plan.deadline = deadline; plan.note = note; }
+        showToast('计划已更新');
+    } else {
+        const newId = allPlans.length > 0 ? Math.max(...allPlans.map(p => p.id)) + 1 : 1;
+        allPlans.push({id:newId, name, target, current, deadline, note, createdAt:Date.now()});
+        showToast('计划已创建');
+    }
+    savePlans();
+    closePlanModal();
+    renderPlans();
+}
+
+function closePlanModal() { document.getElementById('planModal').classList.remove('show'); }
+
+function openPlanDetail(id) {
+    const plan = allPlans.find(p => p.id === id);
+    if (!plan) return;
+    const isDone = plan.current >= plan.target;
+    const percent = Math.min(100, (plan.current / plan.target * 100));
+    const remain = plan.target - plan.current;
+    document.getElementById('planDetailContent').innerHTML = `
+        <div style="text-align:center;margin-bottom:20px">
+            <div style="font-size:32px;margin-bottom:8px">${isDone ? '🎉' : '🎯'}</div>
+            <div style="font-size:20px;font-weight:700;margin-bottom:4px">${plan.name}</div>
+            <div style="font-size:13px;color:${isDone ? 'var(--primary)' : '#1976d2'}">${isDone ? '已达成目标！' : '进行中'}</div>
+        </div>
+        <div style="background:var(--bg);border-radius:12px;padding:16px;margin-bottom:16px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="color:var(--text-hint);font-size:13px">已存</span><span style="font-weight:600;color:var(--primary)">¥${plan.current.toFixed(2)}</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="color:var(--text-hint);font-size:13px">目标</span><span style="font-weight:600">¥${plan.target.toFixed(2)}</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="color:var(--text-hint);font-size:13px">还差</span><span style="font-weight:600;color:${remain > 0 ? 'var(--expense)' : 'var(--primary)'}">¥${Math.max(0, remain).toFixed(2)}</span></div>
+            ${plan.deadline ? `<div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="color:var(--text-hint);font-size:13px">目标日期</span><span style="font-weight:600">${plan.deadline}</span></div>` : ''}
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--text-hint);font-size:13px">完成进度</span><span style="font-weight:600">${percent.toFixed(1)}%</span></div>
+        </div>
+        <div class="progress-bar" style="margin-bottom:16px"><div class="progress-fill ${isDone ? 'done' : 'ongoing'}" style="width:${percent}%"></div></div>
+        ${plan.note ? `<div style="font-size:13px;color:var(--text-secondary);padding:12px;background:var(--bg);border-radius:12px">💬 ${plan.note}</div>` : ''}
+    `;
+    document.getElementById('depositGroup').style.display = isDone ? 'none' : 'block';
+    document.getElementById('depositAmount').value = '';
+    document.getElementById('planDetailModal').dataset.planId = id;
+    document.getElementById('planDetailModal').classList.add('show');
+}
+
+function closePlanDetail() { document.getElementById('planDetailModal').classList.remove('show'); }
+
+function addDeposit() {
+    const id = parseInt(document.getElementById('planDetailModal').dataset.planId);
+    const amount = parseFloat(document.getElementById('depositAmount').value);
+    if (!amount || amount <= 0) { showToast('请输入有效金额'); return; }
+    const plan = allPlans.find(p => p.id === id);
+    if (!plan) return;
+    plan.current = Math.round((plan.current + amount) * 100) / 100;
+    savePlans();
+    if (plan.current >= plan.target) showToast('🎉 恭喜达成目标！');
+    else showToast(`已存入 ¥${amount.toFixed(2)}`);
+    renderPlans();
+    openPlanDetail(id);
+}
+
+function quickDeposit(id) { openPlanDetail(id); document.getElementById('depositAmount').focus(); }
+
+function quickComplete(id) {
+    const plan = allPlans.find(p => p.id === id);
+    if (!plan) return;
+    showConfirm('标记完成', `将 ${plan.name} 的已存金额设为目标金额？`, () => {
+        plan.current = plan.target;
+        savePlans(); renderPlans();
+        showToast('🎉 恭喜达成目标！');
+    });
+}
+
+function deletePlan() {
+    const id = parseInt(document.getElementById('planDetailModal').dataset.planId);
+    showConfirm('删除计划', '确定删除这个存钱计划吗？删除后不可恢复。', () => {
+        allPlans = allPlans.filter(p => p.id !== id);
+        savePlans(); closePlanDetail(); renderPlans();
+        showToast('已删除');
+    });
+}
+
+function editPlanFromDetail() {
+    const id = parseInt(document.getElementById('planDetailModal').dataset.planId);
+    const plan = allPlans.find(p => p.id === id);
+    if (!plan) return;
+    closePlanDetail();
+    document.getElementById('planModalTitle').textContent = '编辑计划';
+    document.getElementById('planEditId').value = id;
+    document.getElementById('planName').value = plan.name;
+    document.getElementById('planTarget').value = plan.target;
+    document.getElementById('planCurrent').value = plan.current;
+    document.getElementById('planDeadline').value = plan.deadline || '';
+    document.getElementById('planNote').value = plan.note || '';
+    document.getElementById('planFormActions').innerHTML = '<button class="btn btn-primary" onclick="savePlan()">保存修改</button>';
+    document.getElementById('planModal').classList.add('show');
+}
+
+document.getElementById('planModal').addEventListener('click', function(e) { if (e.target === this) closePlanModal(); });
+document.getElementById('planDetailModal').addEventListener('click', function(e) { if (e.target === this) closePlanDetail(); });
+
+// 启动
+init();
+</script>
+</body>
+</html>
