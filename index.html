@@ -5,18 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="素龙记账">
-    <meta name="theme-color" content="#d4a5a5">
-    <title>素龙记账</title>
+    <meta name="apple-mobile-web-app-title" content="记账本">
+    <meta name="theme-color" content="#e8a0a0">
+    <title>记账本</title>
     <style>
         *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
         :root{
-            --morandi-pink:#d4a5a5;--morandi-pink-deep:#b88a8a;--morandi-pink-light:#e8d0d0;
-            --morandi-green:#9bb8a6;--morandi-green-deep:#7d9e89;
-            --morandi-coral:#d4887a;--morandi-coral-deep:#b86f62;
-            --morandi-blue:#b8c5d6;--morandi-yellow:#e8d5a3;--morandi-purple:#c5b8d6;
-            --bg:#f7f2ef;--card-bg:#ffffff;--text-primary:#5a5551;--text-secondary:#8a8581;
-            --text-hint:#b5b0ab;--border:#ede8e5;
+            --morandi-pink:#e8a0a0;--morandi-pink-deep:#d47f7f;--morandi-pink-light:#f5d5d5;
+            --morandi-green:#a8c9a8;--morandi-green-deep:#8ab08a;
+            --morandi-coral:#e8948c;--morandi-coral-deep:#c97a72;
+            --morandi-blue:#e2c4d3;--morandi-yellow:#e8d5a3;--morandi-purple:#e8c4d1;
+            --bg:#fef6f6;--card-bg:#ffffff;--text-primary:#5d4f4f;--text-secondary:#9e8080;
+            --text-hint:#c2a8a8;--border:#f5e5e5;
             --shadow:0 4px 20px rgba(90,85,81,0.06);--radius:20px;
             --safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px);
         }
@@ -27,7 +27,7 @@
         .header h1{font-size:22px;font-weight:700;margin-bottom:6px;position:relative;z-index:2}
         .lucky-quote{font-size:13px;opacity:0.92;position:relative;z-index:2;font-weight:500;display:flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:90%}
         .lucky-quote .star{font-size:14px}
-        .dino-wrap{position:absolute;right:16px;bottom:12px;width:78px;height:78px;z-index:2;opacity:0.95}
+        .dino-wrap{position:absolute;right:10px;top:calc(16px + var(--safe-top));width:90px;height:90px;z-index:2;opacity:0.98}
         .month-selector{display:flex;align-items:center;justify-content:space-between;margin-top:18px;background:rgba(255,255,255,0.18);border-radius:14px;padding:10px 16px;position:relative;z-index:2;backdrop-filter:blur(4px)}
         .month-selector button{background:rgba(255,255,255,0.22);border:none;color:white;width:34px;height:34px;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s}
         .month-selector button:active{background:rgba(255,255,255,0.35);transform:scale(0.92)}
@@ -189,7 +189,7 @@
 
 <div id="page-home" class="page active">
     <div class="header">
-        <h1>🦖 素龙记账</h1>
+        <h1>📖 记账本</h1>
         <div class="lucky-quote" id="luckyQuote"><span class="star">✨</span><span id="quoteText">今日好运加载中...</span></div>
         <div class="dino-wrap" id="headerDino"></div>
         <div class="month-selector">
@@ -224,7 +224,7 @@
 
 <div id="page-plans" class="page">
     <div class="header">
-        <h1>🎯 存钱计划</h1>
+        <h1>🐷 存钱计划</h1>
         <div class="lucky-quote"><span class="star">🌟</span>慢慢存钱，慢慢变富</div>
         <div class="dino-wrap" id="planHeaderDino"></div>
     </div>
@@ -281,7 +281,7 @@
         </div>
         <div style="text-align:center;padding:24px;color:var(--text-hint);font-size:12px">
             <div id="footerDino" style="width:80px;height:80px;margin:0 auto 12px;opacity:0.95"></div>
-            素龙记账 · 愿你天天有钱花
+            记账本 · 愿你天天有钱花
         </div>
     </div>
 </div>
@@ -393,11 +393,12 @@ const SVG_ICONS = {
     cloud: '<svg viewBox="0 0 48 48" fill="none"><path d="M12 32c-3 0-6-2-6-6s3-6 6-6c0-4 3-7 8-7 4 0 7 2 8 6 1-1 2-1 3-1 4 0 7 3 7 7s-3 7-7 7H12z" fill="#b8c5d6" stroke="#5a5551" stroke-width="2" stroke-linejoin="round"/><circle cx="18" cy="28" r="1.5" fill="#5a5551"/><circle cx="26" cy="28" r="1.5" fill="#5a5551"/><path d="M16 32c2 1 4 1 6 0M24 32c2 1 4 1 6 0" stroke="#5a5551" stroke-width="1.5" stroke-linecap="round" fill="none"/><path d="M14 38l-1 3M20 38l-1 3M26 38v3M32 38l1 3" stroke="#b8c5d6" stroke-width="2" stroke-linecap="round"/></svg>',
     wand: '<svg viewBox="0 0 48 48" fill="none"><path d="M10 38L30 18l4 4L14 42l-4-4z" fill="#e8d5a3" stroke="#5a5551" stroke-width="2" stroke-linejoin="round"/><circle cx="32" cy="16" r="5" fill="#d4a5a5" stroke="#5a5551" stroke-width="2"/><path d="M32 6v3M32 23v3M22 16h3M39 16h3M25 9l2 2M37 23l2 2M39 9l-2 2M25 23l-2 2" stroke="#c5b8d6" stroke-width="2" stroke-linecap="round"/><circle cx="28" cy="12" r="1" fill="#e8d5a3"/><circle cx="38" cy="20" r="1" fill="#e8d5a3"/></svg>',
     // 素龙真实素材（从用户提供的图片裁剪）
+    dino: '<img src="assets/sulong_chef.png" alt="素龙" style="width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 3px 6px rgba(237,107,138,0.25))">',
     dinoHappy: '<img src="assets/sulong_wave.png" alt="素龙" style="width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 3px 6px rgba(237,107,138,0.25))">',
     dinoPiggy: '<img src="assets/sulong_bao.png" alt="素龙" style="width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 3px 6px rgba(237,107,138,0.25))">',
     dinoSleep: '<img src="assets/sulong_drink.png" alt="素龙" style="width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 3px 6px rgba(237,107,138,0.25))">',
     dinoEmpty: '<img src="assets/sulong_plane.png" alt="素龙" style="width:100%;height:100%;object-fit:contain;opacity:0.9">',
-    dino2: '<img src="assets/sulong_bao.png" alt="素龙" style="width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 3px 6px rgba(237,107,138,0.25))">',
+    dino2: '<img src="assets/sulong_a1.png" alt="素龙" style="width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 3px 6px rgba(237,107,138,0.25))">',
 };
 
 // ============ 好运语录（每日轮换）============
@@ -483,7 +484,7 @@ function getCategoryIcon(name, type) {
 }
 
 // ============ 莫兰迪色板（饼图用）============
-const MORANDI_COLORS = ['#d4a5a5', '#9bb8a6', '#d4887a', '#b8c5d6', '#e8d5a3', '#c5b8d6', '#b88a8a', '#7d9e89', '#a3b8d4', '#d4b8a5'];
+const MORANDI_COLORS = ['#e8a0a0', '#f0c4c4', '#e8948c', '#f5d5a5', '#f0d0a8', '#e8c4d1', '#d4a0a0', '#b8d4b8', '#f0b8a8', '#e0c8c8'];
 
 // ============ 好运语录渲染（每日轮换）============
 function renderLuckyQuote() {
@@ -662,19 +663,27 @@ function renderDonutChart(data, total) {
     data.forEach(function(d, i) {
         var color = MORANDI_COLORS[i % MORANDI_COLORS.length];
         var sweep = (d.value / total) * Math.PI * 2;
-        var x1 = cx + r * Math.cos(angle);
-        var y1 = cy + r * Math.sin(angle);
-        var x2 = cx + r * Math.cos(angle + sweep);
-        var y2 = cy + r * Math.sin(angle + sweep);
-        var x3 = cx + rInner * Math.cos(angle + sweep);
-        var y3 = cy + rInner * Math.sin(angle + sweep);
-        var x4 = cx + rInner * Math.cos(angle);
-        var y4 = cy + rInner * Math.sin(angle);
-        var large = sweep > Math.PI ? 1 : 0;
-        paths += '<path d="M' + x1 + ' ' + y1 + ' A' + r + ' ' + r + ' 0 ' + large + ' 1 ' + x2 + ' ' + y2 + ' L' + x3 + ' ' + y3 + ' A' + rInner + ' ' + rInner + ' 0 ' + large + ' 0 ' + x4 + ' ' + y4 + ' Z" fill="' + color + '" stroke="white" stroke-width="2"/>';
+        // 当只有一笔且等于总和时，sweep 接近 2PI，单条 path 会退化，拆成两段
+        if (sweep > Math.PI * 1.99) {
+            paths += donutSegment(cx, cy, r, rInner, angle, angle + Math.PI, color, 1);
+            paths += donutSegment(cx, cy, r, rInner, angle + Math.PI, angle + sweep, color, 1);
+        } else {
+            paths += donutSegment(cx, cy, r, rInner, angle, angle + sweep, color, sweep > Math.PI ? 1 : 0);
+        }
         angle += sweep;
     });
     return '<svg viewBox="0 0 170 170" style="width:100%;height:100%">' + paths + '</svg>';
+}
+function donutSegment(cx, cy, r, rInner, start, end, color, large) {
+    var x1 = cx + r * Math.cos(start);
+    var y1 = cy + r * Math.sin(start);
+    var x2 = cx + r * Math.cos(end);
+    var y2 = cy + r * Math.sin(end);
+    var x3 = cx + rInner * Math.cos(end);
+    var y3 = cy + rInner * Math.sin(end);
+    var x4 = cx + rInner * Math.cos(start);
+    var y4 = cy + rInner * Math.sin(start);
+    return '<path d="M' + x1 + ' ' + y1 + ' A' + r + ' ' + r + ' 0 ' + large + ' 1 ' + x2 + ' ' + y2 + ' L' + x3 + ' ' + y3 + ' A' + rInner + ' ' + rInner + ' 0 ' + large + ' 0 ' + x4 + ' ' + y4 + ' Z" fill="' + color + '" stroke="white" stroke-width="2"/>';
 }
 
 // ============ 记录列表渲染 ============
