@@ -27,7 +27,7 @@
         .header h1{font-size:22px;font-weight:700;margin-bottom:6px;position:relative;z-index:2}
         .lucky-quote{font-size:13px;opacity:0.92;position:relative;z-index:2;font-weight:500;display:flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:90%}
         .lucky-quote .star{font-size:14px}
-        .dino-wrap{position:absolute;right:16px;bottom:12px;width:72px;height:72px;z-index:2;opacity:0.95}
+        .dino-wrap{position:absolute;right:16px;bottom:12px;width:78px;height:78px;z-index:2;opacity:0.95}
         .month-selector{display:flex;align-items:center;justify-content:space-between;margin-top:18px;background:rgba(255,255,255,0.18);border-radius:14px;padding:10px 16px;position:relative;z-index:2;backdrop-filter:blur(4px)}
         .month-selector button{background:rgba(255,255,255,0.22);border:none;color:white;width:34px;height:34px;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s}
         .month-selector button:active{background:rgba(255,255,255,0.35);transform:scale(0.92)}
@@ -129,7 +129,7 @@
         .plan-summary-card.ongoing .num{color:var(--morandi-blue)}
         .plan-summary-card.done .num{color:var(--morandi-green-deep)}
         .plan-total-card{margin:16px 18px;background:var(--card-bg);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;display:flex;justify-content:space-between;align-items:center}
-        .plan-dino{width:60px;height:60px;flex-shrink:0}
+        .plan-dino{width:70px;height:70px;flex-shrink:0}
         .plan-list{margin:18px 18px 0}
         .plan-card{background:var(--card-bg);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-bottom:14px;cursor:pointer;transition:transform 0.15s}
         .plan-card:active{transform:scale(0.98)}
@@ -163,7 +163,7 @@
         .page{display:none}
         .page.active{display:block}
         .empty-list{text-align:center;padding:60px 20px;color:var(--text-hint)}
-        .empty-list .dino-empty{width:120px;height:120px;margin:0 auto 16px;opacity:0.8}
+        .empty-list .dino-empty{width:130px;height:130px;margin:0 auto 16px;opacity:0.95}
         .toast{position:fixed;top:calc(80px + var(--safe-top));left:50%;transform:translateX(-50%);background:rgba(90,85,81,0.85);color:white;padding:11px 26px;border-radius:24px;font-size:14px;z-index:400;opacity:0;transition:opacity 0.3s;pointer-events:none;white-space:nowrap;backdrop-filter:blur(6px)}
         .toast.show{opacity:1}
         .confirm-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(90,85,81,0.45);z-index:500;align-items:center;justify-content:center}
@@ -280,7 +280,7 @@
             </div>
         </div>
         <div style="text-align:center;padding:24px;color:var(--text-hint);font-size:12px">
-            <div id="footerDino" style="width:70px;height:70px;margin:0 auto 12px;opacity:0.7"></div>
+            <div id="footerDino" style="width:80px;height:80px;margin:0 auto 12px;opacity:0.95"></div>
             素龙记账 · 愿你天天有钱花
         </div>
     </div>
@@ -392,13 +392,12 @@ const SVG_ICONS = {
     house: '<svg viewBox="0 0 48 48" fill="none"><path d="M6 24L24 8l18 16v2h-4v16H10V26H6v-2z" fill="#e8d5a3" stroke="#5a5551" stroke-width="2" stroke-linejoin="round"/><rect x="20" y="28" width="8" height="12" fill="#d4887a" stroke="#5a5551" stroke-width="2"/><rect x="12" y="28" width="6" height="6" fill="#b8c5d6" stroke="#5a5551" stroke-width="1.5"/><rect x="30" y="28" width="6" height="6" fill="#b8c5d6" stroke="#5a5551" stroke-width="1.5"/><path d="M24 8c0-3 3-3 3 0" stroke="#5a5551" stroke-width="1.5" fill="#d4a5a5"/></svg>',
     cloud: '<svg viewBox="0 0 48 48" fill="none"><path d="M12 32c-3 0-6-2-6-6s3-6 6-6c0-4 3-7 8-7 4 0 7 2 8 6 1-1 2-1 3-1 4 0 7 3 7 7s-3 7-7 7H12z" fill="#b8c5d6" stroke="#5a5551" stroke-width="2" stroke-linejoin="round"/><circle cx="18" cy="28" r="1.5" fill="#5a5551"/><circle cx="26" cy="28" r="1.5" fill="#5a5551"/><path d="M16 32c2 1 4 1 6 0M24 32c2 1 4 1 6 0" stroke="#5a5551" stroke-width="1.5" stroke-linecap="round" fill="none"/><path d="M14 38l-1 3M20 38l-1 3M26 38v3M32 38l1 3" stroke="#b8c5d6" stroke-width="2" stroke-linecap="round"/></svg>',
     wand: '<svg viewBox="0 0 48 48" fill="none"><path d="M10 38L30 18l4 4L14 42l-4-4z" fill="#e8d5a3" stroke="#5a5551" stroke-width="2" stroke-linejoin="round"/><circle cx="32" cy="16" r="5" fill="#d4a5a5" stroke="#5a5551" stroke-width="2"/><path d="M32 6v3M32 23v3M22 16h3M39 16h3M25 9l2 2M37 23l2 2M39 9l-2 2M25 23l-2 2" stroke="#c5b8d6" stroke-width="2" stroke-linecap="round"/><circle cx="28" cy="12" r="1" fill="#e8d5a3"/><circle cx="38" cy="20" r="1" fill="#e8d5a3"/></svg>',
-    // 素龙 SVG 元素
-    dino: '<svg viewBox="0 0 100 100" fill="none"><path d="M30 55c0-15 8-25 22-25 10 0 16 5 18 12l8 3c3 1 4 4 3 7l-3 5c2 3 2 7-1 9l-4 3c1 4-1 8-5 9l-5 1c-2 3-6 4-10 3l-6-2c-3 2-7 2-10 0l-5-3c-4 0-7-3-7-7l1-4c-3-2-4-6-2-9l4-4z" fill="#9bb8a6" stroke="#5a5551" stroke-width="2.5" stroke-linejoin="round"/><path d="M28 58c-8 0-14-4-14-10 0-4 3-7 7-7" stroke="#9bb8a6" stroke-width="2.5" stroke-linecap="round" fill="none"/><circle cx="55" cy="40" r="2.5" fill="#5a5551"/><circle cx="68" cy="42" r="2" fill="#5a5551"/><path d="M58 48c2 2 5 2 7 0" stroke="#5a5551" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M48 32c0-4 2-6 4-6M60 30c2-2 5-2 7 0" stroke="#7d9e89" stroke-width="2" stroke-linecap="round" fill="none"/><ellipse cx="64" cy="50" rx="4" ry="3" fill="#d4a5a5" opacity="0.4"/><ellipse cx="44" cy="48" rx="3" ry="2.5" fill="#d4a5a5" opacity="0.3"/><path d="M75 55l3 2M78 62l3 1M73 68l2 3" stroke="#7d9e89" stroke-width="1.5" stroke-linecap="round"/></svg>',
-    dinoHappy: '<svg viewBox="0 0 100 100" fill="none"><path d="M28 58c0-16 8-26 24-26 10 0 16 5 18 12l8 3c3 1 4 4 3 7l-3 5c2 3 2 7-1 9l-4 3c1 4-1 8-5 9l-5 1c-2 3-6 4-10 3l-6-2c-3 2-7 2-10 0l-5-3c-4 0-7-3-7-7l1-4c-3-2-4-6-2-9l4-4z" fill="#9bb8a6" stroke="#5a5551" stroke-width="2.5" stroke-linejoin="round"/><circle cx="52" cy="38" r="3" fill="#5a5551"/><circle cx="66" cy="40" r="2.5" fill="#5a5551"/><path d="M54 46c3 3 7 3 10 0" stroke="#5a5551" stroke-width="2.5" stroke-linecap="round" fill="none"/><path d="M50 34c0-4 2-6 4-6M62 32c2-2 5-2 7 0" stroke="#7d9e89" stroke-width="2" stroke-linecap="round" fill="none"/><ellipse cx="60" cy="44" rx="5" ry="3" fill="#d4a5a5" opacity="0.5"/><path d="M74 54l3 1M77 61l3 1M72 67l2 2" stroke="#7d9e89" stroke-width="1.5" stroke-linecap="round"/><path d="M82 38l2-2 2 2 2-2M86 42l2-2" stroke="#e8d5a3" stroke-width="2" stroke-linecap="round"/></svg>',
-    dinoSleep: '<svg viewBox="0 0 100 100" fill="none"><path d="M25 62c0-14 8-22 22-22 9 0 15 4 17 11l7 2c3 1 4 3 3 6l-2 4c2 2 2 6-1 8l-3 2c1 4-1 7-4 8l-4 1c-2 2-5 3-9 2l-5-2c-3 2-6 2-9 0l-4-3c-3 0-6-3-6-6l1-3c-2-2-3-5-1-8l3-3z" fill="#c5b8d6" stroke="#5a5551" stroke-width="2.5" stroke-linejoin="round"/><path d="M48 42c0-3 2-5 4-5M60 40c2-2 4-2 6 0" stroke="#9bb8a6" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M50 48l4 0M58 48l4 0" stroke="#5a5551" stroke-width="2.5" stroke-linecap="round"/><path d="M55 54c2 1 4 1 6 0" stroke="#5a5551" stroke-width="1.5" stroke-linecap="round" fill="none"/><path d="M76 36l1-2 1 2 1-2M80 40l1-2 1 2 1-2" stroke="#b8c5d6" stroke-width="2" stroke-linecap="round"/><ellipse cx="58" cy="50" rx="4" ry="2.5" fill="#d4a5a5" opacity="0.3"/></svg>',
-    dinoPiggy: '<svg viewBox="0 0 100 100" fill="none"><path d="M20 55c0-18 12-30 30-30s30 12 30 30v5c0 3-2 5-5 5h-3v8c0 2-2 4-4 4h-4c-1 2-3 3-5 3h-4c-1 2-3 3-6 3h-8c-3 0-5-1-6-3h-4c-2 0-4-2-4-4v-8h-3c-3 0-5-2-5-5v-5z" fill="#d4a5a5" stroke="#5a5551" stroke-width="2.5" stroke-linejoin="round"/><path d="M20 55c-5 0-8-3-8-7 0-3 2-5 5-5" stroke="#d4a5a5" stroke-width="2.5" stroke-linecap="round" fill="none"/><circle cx="38" cy="42" r="3" fill="#5a5551"/><circle cx="58" cy="42" r="3" fill="#5a5551"/><ellipse cx="48" cy="52" rx="5" ry="4" fill="#b88a8a"/><circle cx="46" cy="51" r="1" fill="#5a5551"/><circle cx="50" cy="51" r="1" fill="#5a5551"/><path d="M48 56c0 3 2 5 5 5" stroke="#5a5551" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M30 48c0-3 2-5 4-5M64 48c0-3 2-5 4-5" stroke="#7d9e89" stroke-width="2" stroke-linecap="round" fill="none"/><circle cx="28" cy="55" r="3" fill="#d4887a" opacity="0.4"/><circle cx="68" cy="55" r="3" fill="#d4887a" opacity="0.4"/><path d="M82 50l3 1M85 57l3 1M80 63l2 2" stroke="#b88a8a" stroke-width="1.5" stroke-linecap="round"/></svg>',
-    dinoEmpty: '<svg viewBox="0 0 120 120" fill="none"><path d="M30 65c0-18 12-30 30-30s30 12 30 30c0 5-1 9-3 13l5 3c3 1 3 4 2 7l-3 4c2 3 1 7-2 9l-4 2c0 4-3 7-7 7h-5c-2 3-6 4-10 3l-6-1c-3 2-7 2-10 0l-5-2c-4 0-7-3-7-7l1-4c-3-2-4-6-2-9l4-4c-2-4-3-8-3-13z" fill="#e8d5a3" stroke="#5a5551" stroke-width="2.5" stroke-linejoin="round"/><path d="M28 68c-8 0-14-4-14-10 0-4 3-7 7-7" stroke="#e8d5a3" stroke-width="2.5" stroke-linecap="round" fill="none"/><circle cx="50" cy="52" r="3" fill="#5a5551"/><circle cx="68" cy="52" r="3" fill="#5a5551"/><path d="M52 62c4 3 10 3 14 0" stroke="#5a5551" stroke-width="2.5" stroke-linecap="round" fill="none"/><ellipse cx="60" cy="58" rx="5" ry="3" fill="#d4a5a5" opacity="0.4"/><path d="M44 44c0-3 2-5 4-5M68 44c2-2 5-2 7 0" stroke="#c5b8d6" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M86 60l3 1M89 67l3 1M84 73l2 2" stroke="#c5b8d6" stroke-width="1.5" stroke-linecap="round"/><path d="M95 45l2-2 2 2 2-2" stroke="#b8c5d6" stroke-width="2" stroke-linecap="round"/><path d="M15 40l2-2 2 2 2-2" stroke="#b8c5d6" stroke-width="2" stroke-linecap="round"/></svg>',
-    dino2: '<svg viewBox="0 0 80 80" fill="none"><path d="M20 45c0-12 6-18 18-18 8 0 13 4 15 10l6 2c2 1 3 3 2 5l-2 4c2 2 1 5-1 7l-3 2c1 3-1 6-4 6h-4c-2 2-5 3-8 2l-5-1c-2 1-5 1-8 0l-4-2c-3 0-5-2-5-5l1-3c-2-2-3-4-1-7l3-3z" fill="#b8c5d6" stroke="#5a5551" stroke-width="2" stroke-linejoin="round"/><circle cx="40" cy="35" r="2.5" fill="#5a5551"/><circle cx="52" cy="37" r="2" fill="#5a5551"/><path d="M42 43c2 2 5 2 7 0" stroke="#5a5551" stroke-width="1.5" stroke-linecap="round" fill="none"/><path d="M36 30c0-3 2-4 3-4M48 28c2-1 4-1 5 1" stroke="#9bb8a6" stroke-width="1.5" stroke-linecap="round" fill="none"/><ellipse cx="46" cy="40" rx="3" ry="2" fill="#d4a5a5" opacity="0.4"/></svg>'
+    // 素龙真实素材（从用户提供的图片裁剪）
+    dinoHappy: '<img src="assets/sulong_wave.png" alt="素龙" style="width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 3px 6px rgba(237,107,138,0.25))">',
+    dinoPiggy: '<img src="assets/sulong_bao.png" alt="素龙" style="width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 3px 6px rgba(237,107,138,0.25))">',
+    dinoSleep: '<img src="assets/sulong_drink.png" alt="素龙" style="width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 3px 6px rgba(237,107,138,0.25))">',
+    dinoEmpty: '<img src="assets/sulong_plane.png" alt="素龙" style="width:100%;height:100%;object-fit:contain;opacity:0.9">',
+    dino2: '<img src="assets/sulong_bao.png" alt="素龙" style="width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 3px 6px rgba(237,107,138,0.25))">',
 };
 
 // ============ 好运语录（每日轮换）============
