@@ -41,8 +41,7 @@
         .overview-item.income .value{color:#7d9e89}
         .overview-item.expense .value{color:#c97a72}
         .overview-item.balance .value{color:#e8a0aa}
-        .dino-divider{height:40px;margin:0 18px;display:flex;align-items:center;justify-content:center;opacity:0.7;gap:16px}
-        .section{margin:18px 18px 0}
+                .section{margin:18px 18px 0}
         .section-title{font-size:15px;font-weight:700;color:var(--text-secondary);margin-bottom:12px;display:flex;align-items:center}
         .section-title::before{content:'';display:inline-block;width:4px;height:16px;background:#e8a0aa;border-radius:2px;margin-right:8px}
         .chart-card{background:var(--card-bg);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px 12px}
@@ -205,8 +204,7 @@
             <div class="overview-item balance"><div class="label">结余</div><div class="value" id="totalBalance">¥0.00</div></div>
         </div>
     </div>
-    <div class="dino-divider" id="dinoDivider"></div>
-    <div class="section">
+        <div class="section">
         <div class="section-title"><span>支出分析</span></div>
         <div class="chart-card">
             <div class="chart-tabs">
@@ -1184,9 +1182,7 @@ function init() {
     document.getElementById('planDino').innerHTML = SVG_ICONS.dino2;
     document.getElementById('footerDino').innerHTML = SVG_ICONS.dino;
     // 分隔线小恐龙
-    document.getElementById('dinoDivider').innerHTML =
-        '<svg viewBox="0 0 200 40" fill="none" style="width:140px;height:28px"><path d="M5 20h60" stroke="#d4a5a5" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 4"/><circle cx="75" cy="20" r="2" fill="#d4a5a5"/><path d="M85 20h30" stroke="#b8c5d6" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 4"/><circle cx="125" cy="20" r="2" fill="#9bb8a6"/><path d="M135 20h60" stroke="#9bb8a6" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 4"/></svg>';
-    renderHome();
+        renderHome();
 }
 
 // 点击遮罩关闭模态框
