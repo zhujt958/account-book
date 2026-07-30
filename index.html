@@ -675,10 +675,10 @@ function renderDonutChart(data, total) {
         // 分左右：右侧标签在饼图右侧，左侧标签在左侧
         var isRight = Math.cos(mid) >= 0;
         // 折点2：水平拉到固定位置
-        var x3 = isRight ? cx + r + 34 : cx - r - 34;
+        var x3 = isRight ? cx + r + 16 : cx - r - 16;
         var y3 = y2;
         var textAnchor = isRight ? 'start' : 'end';
-        var textX = isRight ? x3 + 3 : x3 - 3;
+        var textX = isRight ? x3 + 2 : x3 - 2;
         var entry = { x1: x1, y1: y1, x2: x2, y2: y2, x3: x3, y3: y3, tx: textX, ty: y3, anchor: textAnchor, text: labelText, color: color };
         if (isRight) rightLabels.push(entry);
         else leftLabels.push(entry);
