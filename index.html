@@ -45,7 +45,7 @@
         .section-title{font-size:15px;font-weight:700;color:var(--text-secondary);margin-bottom:12px;display:flex;align-items:center}
         .section-title::before{content:'';display:inline-block;width:4px;height:16px;background:#e8a0aa;border-radius:2px;margin-right:8px}
         .chart-card{background:var(--card-bg);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px 12px}
-        .pie-chart-wrap{position:relative;width:240px;height:240px;margin:10px auto 8px;padding:0 30px}
+        .pie-chart-wrap{position:relative;width:290px;height:200px;margin:6px auto 4px;padding:0}
         .pie-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
         .pie-center .label{font-size:11px;color:var(--text-hint)}
         .pie-center .value{font-size:18px;font-weight:700;color:#c97a72}
@@ -655,7 +655,7 @@ function renderChart(records) {
 }
 
 function renderDonutChart(data, total) {
-    var cx = 100, cy = 100, r = 80, rInner = 52;
+    var cx = 105, cy = 100, r = 68, rInner = 44;
     var angle = -Math.PI / 2;
     var paths = '';
     var leftLabels = [], rightLabels = [];
@@ -666,15 +666,16 @@ function renderDonutChart(data, total) {
         var pct = d.value / total * 100;
         var pctText = pct < 1 ? '<1%' : pct.toFixed(1) + '%';
         var labelText = d.name + ' ' + pctText;
-        // 引线起点（饼图边缘）
+        // 引线起点
         var x1 = cx + r * Math.cos(mid);
         var y1 = cy + r * Math.sin(mid);
-        // 引线折点
-        var x2 = cx + (r + 12) * Math.cos(mid);
-        var y2 = cy + (r + 12) * Math.sin(mid);
-        // 引线终点（水平延伸到固定 x 位置）
+        // 折点1：径向往外
+        var x2 = cx + (r + 10) * Math.cos(mid);
+        var y2 = cy + (r + 10) * Math.sin(mid);
+        // 分左右：右侧标签在饼图右侧，左侧标签在左侧
         var isRight = Math.cos(mid) >= 0;
-        var x3 = isRight ? cx + r + 40 : cx - r - 40;
+        // 折点2：水平拉到固定位置
+        var x3 = isRight ? cx + r + 34 : cx - r - 34;
         var y3 = y2;
         var textAnchor = isRight ? 'start' : 'end';
         var textX = isRight ? x3 + 3 : x3 - 3;
@@ -689,33 +690,24 @@ function renderDonutChart(data, total) {
         }
         angle += sweep;
     });
-    // 防重叠：左右各自按 y 排序，最小间距 16px
+    // 防重叠
     function spread(labels) {
         labels.sort(function(a, b) { return a.ty - b.ty; });
-        var minGap = 16;
+        var minGap = 14;
         for (var i = 1; i < labels.length; i++) {
-            if (labels[i].ty - labels[i-1].ty < minGap) {
-                labels[i].ty = labels[i-1].ty + minGap;
-            }
+            if (labels[i].ty - labels[i-1].ty < minGap) labels[i].ty = labels[i-1].ty + minGap;
         }
-        // 反向再调一次
         for (var i = labels.length - 2; i >= 0; i--) {
-            if (labels[i+1].ty - labels[i].ty < minGap) {
-                labels[i].ty = labels[i+1].ty - minGap;
-            }
-        }
-        // 更新 y3 和 y2 使引线跟随
-        for (var i = 0; i < labels.length; i++) {
-            labels[i].y3 = labels[i].ty;
+            if (labels[i+1].ty - labels[i].ty < minGap) labels[i].ty = labels[i+1].ty - minGap;
         }
     }
     spread(rightLabels);
     spread(leftLabels);
     var allLabels = rightLabels.concat(leftLabels);
     var labelSvg = allLabels.map(function(l) {
-        return '<polyline points="' + l.x1 + ',' + l.y1 + ' ' + l.x2 + ',' + l.y2 + ' ' + l.x3 + ',' + l.y3 + '" fill="none" stroke="' + l.color + '" stroke-width="1.5"/><circle cx="' + l.x1 + '" cy="' + l.y1 + '" r="2" fill="' + l.color + '"/><text x="' + l.tx + '" y="' + l.ty + '" fill="#5a4a4e" font-size="11" font-weight="600" text-anchor="' + l.anchor + '" dominant-baseline="middle">' + l.text + '</text>';
+        return '<polyline points="' + l.x1 + ',' + l.y1 + ' ' + l.x2 + ',' + l.y2 + ' ' + l.x3 + ',' + l.ty + '" fill="none" stroke="' + l.color + '" stroke-width="1.2"/><circle cx="' + l.x1 + '" cy="' + l.y1 + '" r="1.8" fill="' + l.color + '"/><text x="' + l.tx + '" y="' + l.ty + '" fill="#5a4a4e" font-size="10" font-weight="600" text-anchor="' + l.anchor + '" dominant-baseline="middle">' + l.text + '</text>';
     }).join('');
-    return '<svg viewBox="0 0 200 200" style="width:100%;height:100%;overflow:visible">' + paths + labelSvg + '</svg>';
+    return '<svg viewBox="0 0 210 200" style="width:100%;height:100%;overflow:visible">' + paths + labelSvg + '</svg>';
 }
 function donutSegment(cx, cy, r, rInner, start, end, color, large) {
     var x1 = cx + r * Math.cos(start);
