@@ -45,8 +45,8 @@
         .section{margin:18px 18px 0}
         .section-title{font-size:15px;font-weight:700;color:var(--text-secondary);margin-bottom:12px;display:flex;align-items:center}
         .section-title::before{content:'';display:inline-block;width:4px;height:16px;background:#e8a0aa;border-radius:2px;margin-right:8px}
-        .chart-card{background:var(--card-bg);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}
-        .pie-chart-wrap{position:relative;width:170px;height:170px;margin:0 auto 14px}
+        .chart-card{background:var(--card-bg);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px 16px}
+        .pie-chart-wrap{position:relative;width:170px;height:170px;margin:14px auto 10px;padding:0 20px}
         .pie-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
         .pie-center .label{font-size:11px;color:var(--text-hint)}
         .pie-center .value{font-size:18px;font-weight:700;color:#c97a72}
@@ -484,7 +484,7 @@ function getCategoryIcon(name, type) {
 }
 
 // ============ 莫兰迪色板（饼图用）============
-const MORANDI_COLORS = ['#457635', '#6b9136', '#9b7365', '#dfd352', '#f8ebbd', '#b1c5c9', '#dfc5bf', '#8a6d54', '#c4d4a0', '#e8b4a0'];
+const MORANDI_COLORS = ['#e8a0aa', '#c97a72', '#dfc5bf', '#b8c5d6', '#a8c9a8', '#f0d5a0', '#d4c5d6', '#9bb8a6', '#e8948c', '#c5b8a0'];
 
 // ============ 好运语录渲染（每日轮换）============
 function renderLuckyQuote() {
@@ -653,17 +653,44 @@ function renderChart(records) {
             '<div class="legend-right"><div class="legend-amount">' + formatMoney(d.value) + '</div><div class="legend-percent">' + pct + '%</div></div>' +
             '</div>';
     }).join('');
-    area.innerHTML = '<div class="pie-chart-wrap">' + svg + '<div class="pie-center"><div class="label">总支出</div><div class="value">' + formatMoney(total) + '</div></div></div><div class="legend-list">' + legend + '</div>';
+    area.innerHTML = '<div class="pie-chart-wrap">' + svg + '<div class="pie-center"><div class="label">总支出</div><div class="value">' + formatMoney(total) + '</div></div></div>';
 }
 
 function renderDonutChart(data, total) {
     var cx = 85, cy = 85, r = 70, rInner = 48;
     var angle = -Math.PI / 2;
     var paths = '';
+    var labels = [];
     data.forEach(function(d, i) {
         var color = MORANDI_COLORS[i % MORANDI_COLORS.length];
         var sweep = (d.value / total) * Math.PI * 2;
-        // 当只有一笔且等于总和时，sweep 接近 2PI，单条 path 会退化，拆成两段
+        var mid = angle + sweep / 2;
+        var pct = d.value / total * 100;
+        var pctText = pct < 1 ? '<1%' : pct.toFixed(1) + '%';
+        var labelX = cx + (r + 10) * Math.cos(mid);
+        var labelY = cy + (r + 10) * Math.sin(mid);
+        var lineEndX = cx + (r + 24) * Math.cos(mid);
+        var lineEndY = cy + (r + 24) * Math.sin(mid);
+        var textAnchor = 'middle';
+        var textX = lineEndX;
+        var textY = lineEndY;
+        // 根据角度调整标签位置和文字对齐
+        if (mid > -Math.PI / 2 && mid < Math.PI / 2) {
+            textAnchor = 'start';
+            textX = lineEndX + 4;
+        } else if (mid > Math.PI / 2 || mid < -Math.PI / 2) {
+            textAnchor = 'end';
+            textX = lineEndX - 4;
+        }
+        // 顶部和底部微调
+        if (Math.abs(Math.sin(mid)) > 0.85) {
+            textY = lineEndY + (Math.sin(mid) > 0 ? 3 : -3);
+        }
+        labels.push({
+            x1: labelX, y1: labelY, x2: lineEndX, y2: lineEndY,
+            tx: textX, ty: textY, anchor: textAnchor,
+            text: d.name + pctText, color: color
+        });
         if (sweep > Math.PI * 1.99) {
             paths += donutSegment(cx, cy, r, rInner, angle, angle + Math.PI, color, 1);
             paths += donutSegment(cx, cy, r, rInner, angle + Math.PI, angle + sweep, color, 1);
@@ -672,7 +699,10 @@ function renderDonutChart(data, total) {
         }
         angle += sweep;
     });
-    return '<svg viewBox="0 0 170 170" style="width:100%;height:100%">' + paths + '</svg>';
+    var labelSvg = labels.map(function(l) {
+        return '<line x1="' + l.x1 + '" y1="' + l.y1 + '" x2="' + l.x2 + '" y2="' + l.y2 + '" stroke="' + l.color + '" stroke-width="1.2"/><text x="' + l.tx + '" y="' + l.ty + '" fill="#5a4a4e" font-size="8.5" font-weight="500" text-anchor="' + l.anchor + '" dominant-baseline="middle">' + l.text + '</text>';
+    }).join('');
+    return '<svg viewBox="0 0 170 170" style="width:100%;height:100%;overflow:visible">' + paths + labelSvg + '</svg>';
 }
 function donutSegment(cx, cy, r, rInner, start, end, color, large) {
     var x1 = cx + r * Math.cos(start);
