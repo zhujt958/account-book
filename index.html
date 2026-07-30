@@ -250,6 +250,12 @@
         <div class="dino-wrap" id="settingsHeaderDino"></div>
     </div>
     <div style="padding:20px 18px 0;margin-top:-54px;position:relative;z-index:10">
+        <div class="settings-card" id="accountCard">
+            <div class="settings-item" id="accountItem" onclick="openLoginModal()">
+                <div class="settings-item-left"><div class="settings-item-icon" style="background:#fef0f3">👤</div><div class="settings-item-label" id="accountLabel">登录账户</div></div>
+                <div class="settings-item-arrow">›</div>
+            </div>
+        </div>
         <div class="settings-card">
             <div class="settings-item" onclick="exportData()">
                 <div class="settings-item-left"><div class="settings-item-icon" style="background:#f7f2ef">📤</div><div class="settings-item-label">导出数据</div></div>
@@ -270,11 +276,11 @@
         <div class="settings-card">
             <div class="settings-item">
                 <div class="settings-item-left"><div class="settings-item-icon" style="background:#f7f2ef">💾</div><div class="settings-item-label">数据存储</div></div>
-                <div class="settings-item-value">本地浏览器</div>
+                <div class="settings-item-value" id="storageType">本地浏览器</div>
             </div>
             <div class="settings-item">
                 <div class="settings-item-left"><div class="settings-item-icon" style="background:#f7f2ef">ℹ️</div><div class="settings-item-label">版本</div></div>
-                <div class="settings-item-value">v3.0.0</div>
+                <div class="settings-item-value">v6.0.0</div>
             </div>
         </div>
         <div style="text-align:center;padding:24px;color:var(--text-hint);font-size:12px">
@@ -357,6 +363,20 @@
         <input type="text" id="customInput" placeholder="输入名称..." maxlength="10">
         <div class="icon-row" id="iconPicker"></div>
         <div class="btns" style="display:flex;gap:12px"><button class="btn btn-secondary" onclick="hideInputDialog()">取消</button><button class="btn btn-primary" id="inputDialogOkBtn">确定</button></div>
+    </div>
+</div>
+
+
+<!-- 登录弹窗 -->
+<div class="modal-overlay" id="loginModal">
+    <div class="modal">
+        <div class="modal-header"><div class="modal-title">登录账户</div><button class="modal-close" onclick="closeLoginModal()">×</button></div>
+        <div class="form-group"><label class="form-label">邮箱</label><input type="email" class="form-input" id="loginEmail" placeholder="输入邮箱地址..." inputmode="email"></div>
+        <div class="form-group" style="display:none" id="codeGroup"><label class="form-label">验证码</label>
+            <div style="display:flex;gap:8px"><input type="text" class="form-input" id="loginCode" placeholder="6位验证码" maxlength="6" inputmode="numeric" style="flex:1"><button class="btn btn-secondary" style="flex:0 0 auto;padding:12px 16px;font-size:13px;white-space:nowrap" id="resendBtn" onclick="sendCode(true)" disabled>60s</button></div>
+        </div>
+        <div class="form-actions"><button class="btn btn-primary" id="loginBtn" onclick="loginStep()">发送验证码</button></div>
+        <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--text-hint)">登录后数据将自动同步到云端</div>
     </div>
 </div>
 
@@ -577,6 +597,7 @@ function switchPage(page, navEl) {
 function changeMonth(delta) {
     STATE.currentMonth.setMonth(STATE.currentMonth.getMonth() + delta);
     renderHome();
+    updateAccountUI();
 }
 function renderMonthDisplay() {
     document.getElementById('monthDisplay').textContent = getMonthDisplay(STATE.currentMonth);
@@ -920,6 +941,7 @@ function saveRecord() {
     saveData();
     closeModal();
     renderHome();
+    updateAccountUI();
 }
 
 function deleteRecord() {
@@ -1163,6 +1185,201 @@ function showClearConfirm() {
     });
 }
 
+
+// ============ 账户系统 ============
+const API_BASE = 'https://account-book-api.YOUR_SUBDOMAIN.workers.dev';
+const TOKEN_KEY = 'sulong_account_token';
+const EMAIL_KEY = 'sulong_account_email';
+let loginStepState = 'email'; // 'email' or 'code'
+let resendTimer = null;
+
+function getToken() { return localStorage.getItem(TOKEN_KEY); }
+function getEmail() { return localStorage.getItem(EMAIL_KEY); }
+function isLoggedIn() { return !!getToken(); }
+
+function updateAccountUI() {
+    var item = document.getElementById('accountItem');
+    var label = document.getElementById('accountLabel');
+    if (isLoggedIn()) {
+        var email = getEmail();
+        label.textContent = email;
+        item.onclick = showAccountMenu;
+    } else {
+        label.textContent = '登录账户';
+        item.onclick = openLoginModal;
+    }
+}
+
+function openLoginModal() {
+    loginStepState = 'email';
+    document.getElementById('loginEmail').value = '';
+    document.getElementById('loginCode').value = '';
+    document.getElementById('codeGroup').style.display = 'none';
+    document.getElementById('loginBtn').textContent = '发送验证码';
+    document.getElementById('loginModal').classList.add('show');
+}
+
+function closeLoginModal() {
+    document.getElementById('loginModal').classList.remove('show');
+    if (resendTimer) { clearInterval(resendTimer); resendTimer = null; }
+}
+
+function loginStep() {
+    if (loginStepState === 'email') {
+        sendCode(false);
+    } else {
+        verifyAndLogin();
+    }
+}
+
+async function sendCode(isResend) {
+    var email = document.getElementById('loginEmail').value.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        toast('请输入有效邮箱');
+        return;
+    }
+    var btn = document.getElementById('loginBtn');
+    btn.disabled = true;
+    btn.textContent = '发送中...';
+    try {
+        var res = await fetch(API_BASE + '/api/send-code', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email })
+        });
+        var result = await res.json();
+        if (result.success) {
+            toast('验证码已发送');
+            loginStepState = 'code';
+            document.getElementById('codeGroup').style.display = 'block';
+            document.getElementById('loginBtn').textContent = '登录';
+            document.getElementById('loginBtn').disabled = false;
+            startResendCountdown();
+            document.getElementById('loginCode').focus();
+        } else {
+            toast(result.error || '发送失败');
+            btn.disabled = false;
+            btn.textContent = '发送验证码';
+        }
+    } catch(e) {
+        toast('网络错误，请检查API配置');
+        btn.disabled = false;
+        btn.textContent = '发送验证码';
+    }
+}
+
+function startResendCountdown() {
+    var seconds = 60;
+    var btn = document.getElementById('resendBtn');
+    btn.disabled = true;
+    btn.textContent = seconds + 's';
+    resendTimer = setInterval(function() {
+        seconds--;
+        btn.textContent = seconds + 's';
+        if (seconds <= 0) {
+            clearInterval(resendTimer);
+            resendTimer = null;
+            btn.disabled = false;
+            btn.textContent = '重新发送';
+        }
+    }, 1000);
+}
+
+async function verifyAndLogin() {
+    var email = document.getElementById('loginEmail').value.trim();
+    var code = document.getElementById('loginCode').value.trim();
+    if (!code || code.length !== 6) { toast('请输入6位验证码'); return; }
+    var btn = document.getElementById('loginBtn');
+    btn.disabled = true;
+    btn.textContent = '登录中...';
+    try {
+        var res = await fetch(API_BASE + '/api/verify-code', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email, code: code })
+        });
+        var result = await res.json();
+        if (result.success) {
+            localStorage.setItem(TOKEN_KEY, result.token);
+            localStorage.setItem(EMAIL_KEY, email);
+            closeLoginModal();
+            toast('登录成功，正在同步数据...');
+            btn.disabled = false;
+            btn.textContent = '发送验证码';
+            // 同步数据
+            await syncDataOnLogin();
+            updateAccountUI();
+            renderHome();
+            if (STATE.currentPage === 'plans') renderPlans();
+        } else {
+            toast(result.error || '验证失败');
+            btn.disabled = false;
+            btn.textContent = '登录';
+        }
+    } catch(e) {
+        toast('网络错误');
+        btn.disabled = false;
+        btn.textContent = '登录';
+    }
+}
+
+function showAccountMenu() {
+    var email = getEmail();
+    showConfirm('账户管理', email + '\n\n选择操作：', function() {
+        // 退出登录
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(EMAIL_KEY);
+        updateAccountUI();
+        toast('已退出登录');
+    });
+    document.getElementById('confirmOkBtn').textContent = '退出登录';
+}
+
+async function syncToCloud() {
+    if (!isLoggedIn()) return;
+    try {
+        await fetch(API_BASE + '/api/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+            body: JSON.stringify({ data: DATA })
+        });
+    } catch(e) { console.log('同步失败', e); }
+}
+
+async function syncDataOnLogin() {
+    if (!isLoggedIn()) return;
+    try {
+        // 先拉取云端数据
+        var res = await fetch(API_BASE + '/api/sync', {
+            headers: { 'Authorization': 'Bearer ' + getToken() }
+        });
+        var result = await res.json();
+        if (result.success && result.data) {
+            // 合并：云端有数据且本地也有数据时，用云端覆盖（首次登录以本地为准）
+            // 这里策略：如果云端有数据，用云端覆盖本地；如果云端没有，上传本地
+            var cloudData = result.data;
+            if (cloudData.records && cloudData.records.length > 0) {
+                DATA = cloudData;
+                saveData();
+            } else {
+                // 云端为空，上传本地数据
+                await syncToCloud();
+            }
+        } else {
+            // 云端无数据，上传本地
+            await syncToCloud();
+        }
+    } catch(e) { console.log('同步失败', e); }
+}
+
+// 修改 saveData，加入云同步
+var _originalSaveData = saveData;
+saveData = function() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA));
+    syncToCloud(); // 异步同步到云端，不阻塞
+};
+
+
 // ============ 初始化 ============
 function init() {
     loadData();
@@ -1175,6 +1392,7 @@ function init() {
     document.getElementById('footerDino').innerHTML = SVG_ICONS.dino;
     // 分隔线小恐龙
         renderHome();
+    updateAccountUI();
 }
 
 // 点击遮罩关闭模态框
