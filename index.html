@@ -45,8 +45,8 @@
         .section{margin:18px 18px 0}
         .section-title{font-size:15px;font-weight:700;color:var(--text-secondary);margin-bottom:12px;display:flex;align-items:center}
         .section-title::before{content:'';display:inline-block;width:4px;height:16px;background:#e8a0aa;border-radius:2px;margin-right:8px}
-        .chart-card{background:var(--card-bg);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px 16px}
-        .pie-chart-wrap{position:relative;width:170px;height:170px;margin:14px auto 10px;padding:0 20px}
+        .chart-card{background:var(--card-bg);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px 12px}
+        .pie-chart-wrap{position:relative;width:240px;height:240px;margin:10px auto 8px;padding:0 30px}
         .pie-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
         .pie-center .label{font-size:11px;color:var(--text-hint)}
         .pie-center .value{font-size:18px;font-weight:700;color:#c97a72}
@@ -653,44 +653,36 @@ function renderChart(records) {
             '<div class="legend-right"><div class="legend-amount">' + formatMoney(d.value) + '</div><div class="legend-percent">' + pct + '%</div></div>' +
             '</div>';
     }).join('');
-    area.innerHTML = '<div class="pie-chart-wrap">' + svg + '<div class="pie-center"><div class="label">总支出</div><div class="value">' + formatMoney(total) + '</div></div></div>';
+    area.innerHTML = '<div class="pie-chart-wrap">' + svg + '</div>';
 }
 
 function renderDonutChart(data, total) {
-    var cx = 85, cy = 85, r = 70, rInner = 48;
+    var cx = 100, cy = 100, r = 80, rInner = 52;
     var angle = -Math.PI / 2;
     var paths = '';
-    var labels = [];
+    var leftLabels = [], rightLabels = [];
     data.forEach(function(d, i) {
         var color = MORANDI_COLORS[i % MORANDI_COLORS.length];
         var sweep = (d.value / total) * Math.PI * 2;
         var mid = angle + sweep / 2;
         var pct = d.value / total * 100;
         var pctText = pct < 1 ? '<1%' : pct.toFixed(1) + '%';
-        var labelX = cx + (r + 10) * Math.cos(mid);
-        var labelY = cy + (r + 10) * Math.sin(mid);
-        var lineEndX = cx + (r + 24) * Math.cos(mid);
-        var lineEndY = cy + (r + 24) * Math.sin(mid);
-        var textAnchor = 'middle';
-        var textX = lineEndX;
-        var textY = lineEndY;
-        // 根据角度调整标签位置和文字对齐
-        if (mid > -Math.PI / 2 && mid < Math.PI / 2) {
-            textAnchor = 'start';
-            textX = lineEndX + 4;
-        } else if (mid > Math.PI / 2 || mid < -Math.PI / 2) {
-            textAnchor = 'end';
-            textX = lineEndX - 4;
-        }
-        // 顶部和底部微调
-        if (Math.abs(Math.sin(mid)) > 0.85) {
-            textY = lineEndY + (Math.sin(mid) > 0 ? 3 : -3);
-        }
-        labels.push({
-            x1: labelX, y1: labelY, x2: lineEndX, y2: lineEndY,
-            tx: textX, ty: textY, anchor: textAnchor,
-            text: d.name + pctText, color: color
-        });
+        var labelText = d.name + ' ' + pctText;
+        // 引线起点（饼图边缘）
+        var x1 = cx + r * Math.cos(mid);
+        var y1 = cy + r * Math.sin(mid);
+        // 引线折点
+        var x2 = cx + (r + 12) * Math.cos(mid);
+        var y2 = cy + (r + 12) * Math.sin(mid);
+        // 引线终点（水平延伸到固定 x 位置）
+        var isRight = Math.cos(mid) >= 0;
+        var x3 = isRight ? cx + r + 40 : cx - r - 40;
+        var y3 = y2;
+        var textAnchor = isRight ? 'start' : 'end';
+        var textX = isRight ? x3 + 3 : x3 - 3;
+        var entry = { x1: x1, y1: y1, x2: x2, y2: y2, x3: x3, y3: y3, tx: textX, ty: y3, anchor: textAnchor, text: labelText, color: color };
+        if (isRight) rightLabels.push(entry);
+        else leftLabels.push(entry);
         if (sweep > Math.PI * 1.99) {
             paths += donutSegment(cx, cy, r, rInner, angle, angle + Math.PI, color, 1);
             paths += donutSegment(cx, cy, r, rInner, angle + Math.PI, angle + sweep, color, 1);
@@ -699,10 +691,33 @@ function renderDonutChart(data, total) {
         }
         angle += sweep;
     });
-    var labelSvg = labels.map(function(l) {
-        return '<line x1="' + l.x1 + '" y1="' + l.y1 + '" x2="' + l.x2 + '" y2="' + l.y2 + '" stroke="' + l.color + '" stroke-width="1.2"/><text x="' + l.tx + '" y="' + l.ty + '" fill="#5a4a4e" font-size="8.5" font-weight="500" text-anchor="' + l.anchor + '" dominant-baseline="middle">' + l.text + '</text>';
+    // 防重叠：左右各自按 y 排序，最小间距 16px
+    function spread(labels) {
+        labels.sort(function(a, b) { return a.ty - b.ty; });
+        var minGap = 16;
+        for (var i = 1; i < labels.length; i++) {
+            if (labels[i].ty - labels[i-1].ty < minGap) {
+                labels[i].ty = labels[i-1].ty + minGap;
+            }
+        }
+        // 反向再调一次
+        for (var i = labels.length - 2; i >= 0; i--) {
+            if (labels[i+1].ty - labels[i].ty < minGap) {
+                labels[i].ty = labels[i+1].ty - minGap;
+            }
+        }
+        // 更新 y3 和 y2 使引线跟随
+        for (var i = 0; i < labels.length; i++) {
+            labels[i].y3 = labels[i].ty;
+        }
+    }
+    spread(rightLabels);
+    spread(leftLabels);
+    var allLabels = rightLabels.concat(leftLabels);
+    var labelSvg = allLabels.map(function(l) {
+        return '<polyline points="' + l.x1 + ',' + l.y1 + ' ' + l.x2 + ',' + l.y2 + ' ' + l.x3 + ',' + l.y3 + '" fill="none" stroke="' + l.color + '" stroke-width="1.5"/><circle cx="' + l.x1 + '" cy="' + l.y1 + '" r="2" fill="' + l.color + '"/><text x="' + l.tx + '" y="' + l.ty + '" fill="#5a4a4e" font-size="11" font-weight="600" text-anchor="' + l.anchor + '" dominant-baseline="middle">' + l.text + '</text>';
     }).join('');
-    return '<svg viewBox="0 0 170 170" style="width:100%;height:100%;overflow:visible">' + paths + labelSvg + '</svg>';
+    return '<svg viewBox="0 0 200 200" style="width:100%;height:100%;overflow:visible">' + paths + labelSvg + '</svg>';
 }
 function donutSegment(cx, cy, r, rInner, start, end, color, large) {
     var x1 = cx + r * Math.cos(start);
