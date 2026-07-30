@@ -653,7 +653,7 @@ function renderChart(records) {
             '<div class="legend-right"><div class="legend-amount">' + formatMoney(d.value) + '</div><div class="legend-percent">' + pct + '%</div></div>' +
             '</div>';
     }).join('');
-    area.innerHTML = '<div class="pie-chart-wrap">' + svg + '</div>';
+    area.innerHTML = '<div class="pie-chart-wrap">' + svg + '</div><div class="legend-list">' + legend + '</div>';
 }
 
 function renderDonutChart(data, total) {
