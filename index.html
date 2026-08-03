@@ -1198,7 +1198,48 @@ function _sbAuthHeaders(token) {
 }
 function _getToken() { return localStorage.getItem('sulong_token'); }
 function _saveToken(token) { localStorage.setItem('sulong_token', token); }
-function _clearToken() { localStorage.removeItem('sulong_token'); }
+function _saveRefreshToken(token) { localStorage.setItem('sulong_refresh_token', token); }
+function _getRefreshToken() { return localStorage.getItem('sulong_refresh_token'); }
+function _clearToken() { localStorage.removeItem('sulong_token'); localStorage.removeItem('sulong_refresh_token'); }
+
+// 刷新过期的 token
+async function _refreshToken() {
+    var refreshToken = _getRefreshToken();
+    if (!refreshToken) return false;
+    try {
+        var res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+            method: 'POST', headers: _sbHeaders(),
+            body: JSON.stringify({ refresh_token: refreshToken })
+        });
+        if (!res.ok) return false;
+        var data = await res.json();
+        _saveToken(data.access_token);
+        _saveRefreshToken(data.refresh_token);
+        return true;
+    } catch(e) { return false; }
+}
+
+// 带自动刷新的 API 请求
+async function _supabaseFetch(url, options) {
+    var token = _getToken();
+    if (!token) return null;
+    var headers = options.headers || {};
+    headers['Authorization'] = 'Bearer ' + token;
+    headers['apikey'] = SUPABASE_KEY;
+    if (!headers['Content-Type']) headers['Content-Type'] = 'application/json';
+    options.headers = headers;
+
+    var res = await fetch(url, options);
+    // token 过期，尝试刷新
+    if (res.status === 401 || res.status === 403) {
+        var refreshed = await _refreshToken();
+        if (refreshed) {
+            options.headers['Authorization'] = 'Bearer ' + _getToken();
+            res = await fetch(url, options);
+        }
+    }
+    return res;
+}
 
 let authMode = 'login';
 
@@ -1284,6 +1325,7 @@ async function doLogin() {
         if (authMode === 'register') {
             if (data.access_token) {
                 _saveToken(data.access_token);
+                _saveRefreshToken(data.refresh_token);
                 localStorage.setItem('sulong_account_email', email);
                 localStorage.setItem('sulong_account_uid', data.user.id);
                 onLoginSuccess(email);
@@ -1295,6 +1337,7 @@ async function doLogin() {
             }
         } else {
             _saveToken(data.access_token);
+            _saveRefreshToken(data.refresh_token);
             localStorage.setItem('sulong_account_email', email);
             var userRes = await fetch(SUPABASE_URL + '/auth/v1/user', {
                 headers: _sbAuthHeaders(data.access_token)
@@ -1338,43 +1381,34 @@ function showAccountMenu() {
 
 // 读取云端数据
 async function _supabaseGetData() {
-    var token = _getToken();
     var uid = localStorage.getItem('sulong_account_uid');
-    if (!token || !uid) return null;
+    if (!uid) return null;
     try {
-        var res = await fetch(SUPABASE_URL + '/rest/v1/' + SUPABASE_TABLE + '?user_id=eq.' + uid + '&limit=1', {
-            headers: _sbAuthHeaders(token)
-        });
-        if (!res.ok) return null;
+        var res = await _supabaseFetch(SUPABASE_URL + '/rest/v1/' + SUPABASE_TABLE + '?select=payload&user_id=eq.' + uid + '&limit=1', {});
+        if (!res || !res.ok) return null;
         var arr = await res.json();
         return arr && arr.length ? arr[0].payload : null;
-    } catch(e) { return null; }
+    } catch(e) { console.log('拉取云端异常', e); return null; }
 }
 
 // 写入云端数据
 async function _supabasePutData(payload) {
-    var token = _getToken();
     var uid = localStorage.getItem('sulong_account_uid');
-    if (!token || !uid) return;
+    if (!uid) return;
     try {
         // 先查询是否存在
-        var res = await fetch(SUPABASE_URL + '/rest/v1/' + SUPABASE_TABLE + '?user_id=eq.' + uid + '&limit=1', {
-            headers: _sbAuthHeaders(token)
-        });
+        var res = await _supabaseFetch(SUPABASE_URL + '/rest/v1/' + SUPABASE_TABLE + '?user_id=eq.' + uid + '&limit=1', {});
+        if (!res) return;
         var arr = [];
         try { arr = await res.json(); } catch(e) {}
-        var headers = _sbAuthHeaders(token);
-        headers['Prefer'] = 'return=minimal';
         if (arr && arr.length > 0) {
-            // 更新
-            await fetch(SUPABASE_URL + '/rest/v1/' + SUPABASE_TABLE + '?user_id=eq.' + uid, {
-                method: 'PATCH', headers: headers,
+            await _supabaseFetch(SUPABASE_URL + '/rest/v1/' + SUPABASE_TABLE + '?user_id=eq.' + uid, {
+                method: 'PATCH', headers: { 'Prefer': 'return=minimal' },
                 body: JSON.stringify({ payload: payload, updated_at: new Date().toISOString() })
             });
         } else {
-            // 插入
-            await fetch(SUPABASE_URL + '/rest/v1/' + SUPABASE_TABLE, {
-                method: 'POST', headers: headers,
+            await _supabaseFetch(SUPABASE_URL + '/rest/v1/' + SUPABASE_TABLE, {
+                method: 'POST', headers: { 'Prefer': 'return=minimal' },
                 body: JSON.stringify({ user_id: uid, payload: payload, updated_at: new Date().toISOString() })
             });
         }
