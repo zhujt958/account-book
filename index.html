@@ -383,7 +383,6 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="supabase.js"></script>
 <script>
 // ============ SVG 图标定义（手绘可爱风 + 素龙元素）============
 const SVG_ICONS = {
@@ -1192,27 +1191,21 @@ function showClearConfirm() {
 const SUPABASE_URL = 'https://ubgzyktumjbnovxdiynz.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_Y6eNcCD7GFtlYKj3Hfh4Sw_dRrgHREr';
 const SUPABASE_TABLE = 'user_data';
-var supabase = null;
-function getSupabase() {
-    if (!supabase && window.supabase) {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    }
-    return supabase;
-}
 
-let authMode = 'login'; // 'login' | 'register'
+function _sbHeaders() { return { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' }; }
+function _sbAuthHeaders(token) {
+    var h = _sbHeaders();
+    h['Authorization'] = 'Bearer ' + token;
+    return h;
+}
+function _getToken() { return localStorage.getItem('sulong_token'); }
+function _saveToken(token) { localStorage.setItem('sulong_token', token); }
+function _clearToken() { localStorage.removeItem('sulong_token'); }
+
+let authMode = 'login';
 
 function getEmail() { return localStorage.getItem('sulong_account_email'); }
-function isLoggedIn() { return !!getEmail(); }
-
-async function getCurrentSession() {
-    var sb = getSupabase();
-    if (!sb) return null;
-    try {
-        var { data } = await sb.auth.getSession();
-        return data.session;
-    } catch(e) { return null; }
-}
+function isLoggedIn() { return !!_getToken(); }
 
 function updateAccountUI() {
     var item = document.getElementById('accountItem');
@@ -1258,8 +1251,6 @@ function toggleAuthMode() {
 }
 
 async function doLogin() {
-    var sb = getSupabase();
-    if (!sb) { toast('SDK 加载中，请稍后重试'); return; }
     var email = document.getElementById('loginEmail').value.trim();
     var password = document.getElementById('loginPassword').value.trim();
     if (!email) { toast('请输入邮箱地址'); return; }
@@ -1271,52 +1262,74 @@ async function doLogin() {
     btn.textContent = authMode === 'login' ? '登录中...' : '注册中...';
 
     try {
-        var result;
+        var res;
         if (authMode === 'register') {
-            result = await sb.auth.signUp({ email: email, password: password });
-            if (result.error) throw result.error;
-            if (result.data.user && result.data.session) {
-                onLoginSuccess(email, result.data.session);
+            res = await fetch(SUPABASE_URL + '/auth/v1/signup', {
+                method: 'POST', headers: _sbHeaders(),
+                body: JSON.stringify({ email: email, password: password })
+            });
+        } else {
+            res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+                method: 'POST', headers: _sbHeaders(),
+                body: JSON.stringify({ email: email, password: password })
+            });
+        }
+        var data = await res.json();
+        if (!res.ok) {
+            var msg = data.msg || data.message || '请求失败';
+            if (msg.includes('already registered')) msg = '该邮箱已注册，请直接登录';
+            if (msg.includes('not confirmed')) msg = '邮箱未确认，请检查邮件';
+            if (msg.includes('Invalid login')) msg = '邮箱或密码错误';
+            throw new Error(msg);
+        }
+
+        if (authMode === 'register') {
+            if (data.access_token) {
+                _saveToken(data.access_token);
+                localStorage.setItem('sulong_account_email', email);
+                localStorage.setItem('sulong_account_uid', data.user.id);
+                onLoginSuccess(email);
             } else {
-                toast('注册成功！请检查邮箱确认链接（如未收到请查看垃圾邮件）');
+                toast('注册成功！请检查邮箱确认链接');
                 btn.disabled = false;
                 btn.textContent = '注册';
                 return;
             }
         } else {
-            result = await sb.auth.signInWithPassword({ email: email, password: password });
-            if (result.error) throw result.error;
-            onLoginSuccess(email, result.data.session);
+            _saveToken(data.access_token);
+            localStorage.setItem('sulong_account_email', email);
+            var userRes = await fetch(SUPABASE_URL + '/auth/v1/user', {
+                headers: _sbAuthHeaders(data.access_token)
+            });
+            if (userRes.ok) {
+                var userData = await userRes.json();
+                localStorage.setItem('sulong_account_uid', userData.id);
+            }
+            onLoginSuccess(email);
         }
     } catch(e) {
-        var msg = e.message || '操作失败';
-        if (msg.includes('Invalid login')) msg = '邮箱或密码错误';
-        if (msg.includes('already registered')) msg = '该邮箱已注册，请直接登录';
-        if (msg.includes('Email not confirmed')) msg = '邮箱未确认，请先点击邮件中的确认链接';
-        toast(msg);
+        toast(e.message || '操作失败');
         btn.disabled = false;
         btn.textContent = authMode === 'login' ? '登录' : '注册';
     }
 }
 
-async function onLoginSuccess(email, session) {
-    localStorage.setItem('sulong_account_email', email);
-    localStorage.setItem('sulong_account_uid', session.user.id);
+function onLoginSuccess(email) {
     closeLoginModal();
     document.getElementById('loginBtn').disabled = false;
     document.getElementById('loginBtn').textContent = '登录';
     toast('登录成功，正在同步数据...');
-    await syncDataOnLogin(session);
     updateAccountUI();
-    renderHome();
-    if (STATE.currentPage === 'plans') renderPlans();
+    syncDataOnLogin().then(function() {
+        renderHome();
+        if (STATE.currentPage === 'plans') renderPlans();
+    });
 }
 
 function showAccountMenu() {
     var email = getEmail();
-    showConfirm('账户管理', email + '\n\n确定退出登录吗？', async function() {
-    var sb = getSupabase();
-    if (sb) { try { await sb.auth.signOut(); } catch(e) {} }
+    showConfirm('账户管理', email + '\n\n确定退出登录吗？', function() {
+        _clearToken();
         localStorage.removeItem('sulong_account_email');
         localStorage.removeItem('sulong_account_uid');
         updateAccountUI();
@@ -1325,47 +1338,62 @@ function showAccountMenu() {
     document.getElementById('confirmOkBtn').textContent = '退出登录';
 }
 
-// Supabase: 读取云端数据
-async function supabaseGetData(session) {
-    var sb = getSupabase();
-    if (!sb) return null;
-    var uid = session ? session.user.id : localStorage.getItem('sulong_account_uid');
-    if (!uid) return null;
-    var { data, error } = await sb.from(SUPABASE_TABLE).select('payload, updated_at').eq('user_id', uid).single();
-    if (error && error.code !== 'PGRST116') { console.log('读取云端失败', error); return null; }
-    if (!data) return null;
-    return data.payload;
+// 读取云端数据
+async function _supabaseGetData() {
+    var token = _getToken();
+    var uid = localStorage.getItem('sulong_account_uid');
+    if (!token || !uid) return null;
+    try {
+        var res = await fetch(SUPABASE_URL + '/rest/v1/' + SUPABASE_TABLE + '?user_id=eq.' + uid + '&limit=1', {
+            headers: _sbAuthHeaders(token)
+        });
+        if (!res.ok) return null;
+        var arr = await res.json();
+        return arr && arr.length ? arr[0].payload : null;
+    } catch(e) { return null; }
 }
 
-// Supabase: 写入云端数据
-async function supabasePutData(session, payload) {
-    var sb = getSupabase();
-    if (!sb) return;
-    var uid = session ? session.user.id : localStorage.getItem('sulong_account_uid');
-    if (!uid) return;
-    var { error } = await sb.from(SUPABASE_TABLE).upsert({
-        user_id: uid,
-        payload: payload,
-        updated_at: new Date().toISOString()
-    }, { onConflict: 'user_id' });
-    if (error) console.log('写入云端失败', error);
+// 写入云端数据
+async function _supabasePutData(payload) {
+    var token = _getToken();
+    var uid = localStorage.getItem('sulong_account_uid');
+    if (!token || !uid) return;
+    try {
+        // 先查询是否存在
+        var res = await fetch(SUPABASE_URL + '/rest/v1/' + SUPABASE_TABLE + '?user_id=eq.' + uid + '&limit=1', {
+            headers: _sbAuthHeaders(token)
+        });
+        var arr = [];
+        try { arr = await res.json(); } catch(e) {}
+        var headers = _sbAuthHeaders(token);
+        headers['Prefer'] = 'return=minimal';
+        if (arr && arr.length > 0) {
+            // 更新
+            await fetch(SUPABASE_URL + '/rest/v1/' + SUPABASE_TABLE + '?user_id=eq.' + uid, {
+                method: 'PATCH', headers: headers,
+                body: JSON.stringify({ payload: payload, updated_at: new Date().toISOString() })
+            });
+        } else {
+            // 插入
+            await fetch(SUPABASE_URL + '/rest/v1/' + SUPABASE_TABLE, {
+                method: 'POST', headers: headers,
+                body: JSON.stringify({ user_id: uid, payload: payload, updated_at: new Date().toISOString() })
+            });
+        }
+    } catch(e) { console.log('写入云端失败', e); }
 }
 
 var _syncLock = false;
 async function syncToCloud() {
     if (!isLoggedIn() || _syncLock) return;
     _syncLock = true;
-    try {
-        var session = await getCurrentSession();
-        if (!session) return;
-        await supabasePutData(session, DATA);
-    } catch(e) { console.log('同步失败', e); }
+    try { await _supabasePutData(DATA); } catch(e) { console.log('同步失败', e); }
     _syncLock = false;
 }
 
-async function syncDataOnLogin(session) {
+async function syncDataOnLogin() {
     try {
-        var cloudData = await supabaseGetData(session);
+        var cloudData = await _supabaseGetData();
         if (cloudData && cloudData.records && cloudData.records.length > 0) {
             DATA = cloudData;
             saveData();
@@ -1386,12 +1414,11 @@ saveData = function() {
     syncToCloud();
 };
 
-// 页面加载时自动恢复 session
-async function autoRestoreSession() {
-    var session = await getCurrentSession();
-    if (session && !isLoggedIn()) {
-        localStorage.setItem('sulong_account_email', session.user.email);
-        localStorage.setItem('sulong_account_uid', session.user.id);
+// 页面加载时检查登录状态
+function checkAutoLogin() {
+    var token = _getToken();
+    if (token && getEmail()) {
+        updateAccountUI();
     }
 }
 
@@ -1409,8 +1436,7 @@ function init() {
     // 分隔线小恐龙
         renderHome();
     updateAccountUI();
-    // 自动恢复 Supabase session
-    autoRestoreSession().then(function() { updateAccountUI(); });
+    checkAutoLogin();
 }
 
 // 点击遮罩关闭模态框
