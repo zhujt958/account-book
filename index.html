@@ -1413,10 +1413,23 @@ saveData = function() {
 };
 
 // 页面加载时检查登录状态
-function checkAutoLogin() {
+async function checkAutoLogin() {
     var token = _getToken();
     if (token && getEmail()) {
         updateAccountUI();
+        // 登录状态下，每次打开页面自动从云端拉取最新数据
+        try {
+            var cloudData = await _supabaseGetData();
+            if (cloudData && cloudData.records && cloudData.records.length > 0) {
+                // 比较本地和云端数据，取记录数多的（最新的）
+                var localCount = (DATA.records || []).length;
+                var cloudCount = (cloudData.records || []).length;
+                if (cloudCount >= localCount) {
+                    DATA = cloudData;
+                    saveData();
+                }
+            }
+        } catch(e) { console.log('自动拉取失败', e); }
     }
 }
 
@@ -1434,7 +1447,7 @@ function init() {
     // 分隔线小恐龙
         renderHome();
     updateAccountUI();
-    checkAutoLogin();
+    checkAutoLogin().then(function() { renderHome(); });
 }
 
 // 点击遮罩关闭模态框
