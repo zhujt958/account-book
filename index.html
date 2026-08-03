@@ -8,6 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="记账本">
     <meta name="theme-color" content="#fed0d6">
     <title>记账本</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
         :root{
@@ -280,7 +281,7 @@
             </div>
             <div class="settings-item">
                 <div class="settings-item-left"><div class="settings-item-icon" style="background:#f7f2ef">ℹ️</div><div class="settings-item-label">版本</div></div>
-                <div class="settings-item-value">v6.0.0</div>
+                <div class="settings-item-value">v7.0.0</div>
             </div>
         </div>
         <div style="text-align:center;padding:24px;color:var(--text-hint);font-size:12px">
@@ -370,11 +371,14 @@
 <!-- 登录弹窗 -->
 <div class="modal-overlay" id="loginModal">
     <div class="modal">
-        <div class="modal-header"><div class="modal-title">登录账户</div><button class="modal-close" onclick="closeLoginModal()">×</button></div>
-        <div class="form-group"><label class="form-label">GitHub Token</label><input type="text" class="form-input" id="loginEmail" placeholder="粘贴你的 GitHub Token..." style="font-size:13px"></div>
-
-        <div class="form-actions"><button class="btn btn-primary" id="loginBtn" onclick="loginStep()">发送验证码</button></div>
-        <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--text-hint)">Token 仅存于本地浏览器，数据同步到你的 GitHub 私有仓库</div>
+        <div class="modal-header"><div class="modal-title" id="loginModalTitle">登录账户</div><button class="modal-close" onclick="closeLoginModal()">×</button></div>
+        <div class="form-group"><label class="form-label">邮箱</label><input type="email" class="form-input" id="loginEmail" placeholder="请输入邮箱地址..." autocomplete="email"></div>
+        <div class="form-group"><label class="form-label">密码</label><input type="password" class="form-input" id="loginPassword" placeholder="请输入密码..." autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+        <div class="form-actions"><button class="btn btn-primary" id="loginBtn" onclick="doLogin()">登录</button></div>
+        <div style="display:flex;justify-content:center;gap:12px;margin-top:12px;font-size:13px">
+            <span style="color:var(--text-hint);cursor:pointer" id="toggleRegister" onclick="toggleAuthMode()">没有账号？去注册</span>
+        </div>
+        <div style="text-align:center;margin-top:12px;font-size:11px;color:var(--text-hint)">数据加密存储于云端，安全可靠</div>
     </div>
 </div>
 
@@ -1184,24 +1188,28 @@ function showClearConfirm() {
 }
 
 
-// ============ 账户系统（GitHub 仓库存储方案）============
-// 数据存在 GitHub 私有仓库的 JSON 文件中，用 Token 认证
-const GITHUB_REPO = 'zhujt958/account-book';  // 你的仓库
-const GITHUB_DATA_FILE = 'user_data.json';     // 数据文件名
-const TOKEN_KEY = 'sulong_account_token';      // 存 GitHub Token
-const EMAIL_KEY = 'sulong_account_email';      // 存邮箱（仅显示用）
-let loginStepState = 'email';
+// ============ 账户系统（Supabase 邮箱登录 + 云同步）============
+const SUPABASE_URL = 'https://ubgzyktumjbnovxdiynz.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_Y6eNcCD7GFtlYKj3Hfh4Sw_dRrgHREr';
+const SUPABASE_TABLE = 'user_data';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-function getToken() { return localStorage.getItem(TOKEN_KEY); }
-function getEmail() { return localStorage.getItem(EMAIL_KEY); }
-function isLoggedIn() { return !!getToken(); }
+let authMode = 'login'; // 'login' | 'register'
+
+function getEmail() { return localStorage.getItem('sulong_account_email'); }
+function isLoggedIn() { return !!getEmail(); }
+
+async function getCurrentSession() {
+    var { data } = await supabase.auth.getSession();
+    return data.session;
+}
 
 function updateAccountUI() {
     var item = document.getElementById('accountItem');
     var label = document.getElementById('accountLabel');
     var storageType = document.getElementById('storageType');
     if (isLoggedIn()) {
-        label.textContent = getEmail() || '已登录';
+        label.textContent = getEmail();
         item.onclick = showAccountMenu;
         if (storageType) storageType.textContent = '云端同步';
     } else {
@@ -1212,9 +1220,12 @@ function updateAccountUI() {
 }
 
 function openLoginModal() {
-    loginStepState = 'token';
+    authMode = 'login';
+    document.getElementById('loginModalTitle').textContent = '登录账户';
+    document.getElementById('loginBtn').textContent = '登录';
+    document.getElementById('toggleRegister').textContent = '没有账号？去注册';
     document.getElementById('loginEmail').value = '';
-        document.getElementById('loginBtn').textContent = '登录';
+    document.getElementById('loginPassword').value = '';
     document.getElementById('loginModal').classList.add('show');
 }
 
@@ -1222,77 +1233,106 @@ function closeLoginModal() {
     document.getElementById('loginModal').classList.remove('show');
 }
 
-async function loginStep() {
-    var token = document.getElementById('loginEmail').value.trim();
-    if (!token || token.length < 20) { toast('请输入有效的 GitHub Token'); return; }
+function toggleAuthMode() {
+    if (authMode === 'login') {
+        authMode = 'register';
+        document.getElementById('loginModalTitle').textContent = '注册账户';
+        document.getElementById('loginBtn').textContent = '注册';
+        document.getElementById('toggleRegister').textContent = '已有账号？去登录';
+    } else {
+        authMode = 'login';
+        document.getElementById('loginModalTitle').textContent = '登录账户';
+        document.getElementById('loginBtn').textContent = '登录';
+        document.getElementById('toggleRegister').textContent = '没有账号？去注册';
+    }
+}
+
+async function doLogin() {
+    var email = document.getElementById('loginEmail').value.trim();
+    var password = document.getElementById('loginPassword').value.trim();
+    if (!email) { toast('请输入邮箱地址'); return; }
+    if (!password) { toast('请输入密码'); return; }
+    if (password.length < 6) { toast('密码至少6位'); return; }
+
     var btn = document.getElementById('loginBtn');
     btn.disabled = true;
-    btn.textContent = '验证中...';
+    btn.textContent = authMode === 'login' ? '登录中...' : '注册中...';
+
     try {
-        // 用 Token 获取用户信息来验证
-        var res = await fetch('https://api.github.com/user', {
-            headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github.v3+json' }
-        });
-        if (res.ok) {
-            var user = await res.json();
-            localStorage.setItem(TOKEN_KEY, token);
-            localStorage.setItem(EMAIL_KEY, user.login || user.name || '已登录');
-            closeLoginModal();
-            toast('登录成功，正在同步数据...');
-            btn.disabled = false;
-            btn.textContent = '登录';
-            await syncDataOnLogin();
-            updateAccountUI();
-            renderHome();
-            if (STATE.currentPage === 'plans') renderPlans();
+        var result;
+        if (authMode === 'register') {
+            result = await supabase.auth.signUp({ email: email, password: password });
+            if (result.error) throw result.error;
+            if (result.data.user && result.data.session) {
+                // 邮箱已确认或未开启邮箱确认，直接登录
+                onLoginSuccess(email, result.data.session);
+            } else {
+                toast('注册成功！请检查邮箱确认链接（如未收到请查看垃圾邮件）');
+                btn.disabled = false;
+                btn.textContent = '注册';
+                return;
+            }
         } else {
-            toast('Token 无效，请检查');
-            btn.disabled = false;
-            btn.textContent = '登录';
+            result = await supabase.auth.signInWithPassword({ email: email, password: password });
+            if (result.error) throw result.error;
+            onLoginSuccess(email, result.data.session);
         }
     } catch(e) {
-        toast('网络错误，请重试');
+        var msg = e.message || '操作失败';
+        if (msg.includes('Invalid login')) msg = '邮箱或密码错误';
+        if (msg.includes('already registered')) msg = '该邮箱已注册，请直接登录';
+        if (msg.includes('Email not confirmed')) msg = '邮箱未确认，请先点击邮件中的确认链接';
+        toast(msg);
         btn.disabled = false;
-        btn.textContent = '登录';
+        btn.textContent = authMode === 'login' ? '登录' : '注册';
     }
+}
+
+async function onLoginSuccess(email, session) {
+    localStorage.setItem('sulong_account_email', email);
+    localStorage.setItem('sulong_account_uid', session.user.id);
+    closeLoginModal();
+    document.getElementById('loginBtn').disabled = false;
+    document.getElementById('loginBtn').textContent = '登录';
+    toast('登录成功，正在同步数据...');
+    await syncDataOnLogin(session);
+    updateAccountUI();
+    renderHome();
+    if (STATE.currentPage === 'plans') renderPlans();
 }
 
 function showAccountMenu() {
     var email = getEmail();
-    showConfirm('账户管理', email + '\n\n确定退出登录吗？', function() {
-        localStorage.removeItem(TOKEN_KEY);
-        localStorage.removeItem(EMAIL_KEY);
+    showConfirm('账户管理', email + '\n\n确定退出登录吗？', async function() {
+        await supabase.auth.signOut();
+        localStorage.removeItem('sulong_account_email');
+        localStorage.removeItem('sulong_account_uid');
         updateAccountUI();
         toast('已退出登录');
     });
     document.getElementById('confirmOkBtn').textContent = '退出登录';
 }
 
-// GitHub API: 读取数据文件
-async function githubGetFile(token) {
-    var res = await fetch('https://api.github.com/repos/' + GITHUB_REPO + '/contents/' + GITHUB_DATA_FILE, {
-        headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github.v3+json' }
-    });
-    if (res.status === 404) return null; // 文件不存在
-    if (!res.ok) throw new Error('读取失败: ' + res.status);
-    var data = await res.json();
-    // content 是 base64 编码
-    var content = atob(data.content.replace(/\n/g, ''));
-    return { sha: data.sha, data: JSON.parse(content) };
+// Supabase: 读取云端数据
+async function supabaseGetData(session) {
+    var uid = session ? session.user.id : localStorage.getItem('sulong_account_uid');
+    if (!uid) return null;
+    var { data, error } = await supabase.from(SUPABASE_TABLE).select('payload, updated_at').eq('user_id', uid).single();
+    if (error && error.code !== 'PGRST116') { console.log('读取云端失败', error); return null; }
+    if (!data) return null;
+    return data.payload;
 }
 
-// GitHub API: 写入数据文件
-async function githubPutFile(token, data, sha) {
-    var content = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
-    var body = { message: 'sync data ' + new Date().toISOString(), content: content };
-    if (sha) body.sha = sha;
-    var res = await fetch('https://api.github.com/repos/' + GITHUB_REPO + '/contents/' + GITHUB_DATA_FILE, {
-        method: 'PUT',
-        headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-    });
-    if (!res.ok) throw new Error('写入失败: ' + res.status);
-    return await res.json();
+// Supabase: 写入云端数据
+async function supabasePutData(session, payload) {
+    var uid = session ? session.user.id : localStorage.getItem('sulong_account_uid');
+    if (!uid) return;
+    var { error } = await supabase.from(SUPABASE_TABLE).upsert({
+        user_id: uid,
+        payload: payload,
+        updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' });
+    if (error) console.log('写入云端失败', error);
 }
 
 var _syncLock = false;
@@ -1300,26 +1340,21 @@ async function syncToCloud() {
     if (!isLoggedIn() || _syncLock) return;
     _syncLock = true;
     try {
-        var token = getToken();
-        var existing = await githubGetFile(token);
-        var sha = existing ? existing.sha : null;
-        await githubPutFile(token, DATA, sha);
+        var session = await getCurrentSession();
+        if (!session) return;
+        await supabasePutData(session, DATA);
     } catch(e) { console.log('同步失败', e); }
     _syncLock = false;
 }
 
-async function syncDataOnLogin() {
-    if (!isLoggedIn()) return;
+async function syncDataOnLogin(session) {
     try {
-        var token = getToken();
-        var existing = await githubGetFile(token);
-        if (existing && existing.data && existing.data.records && existing.data.records.length > 0) {
-            // 云端有数据，拉取到本地
-            DATA = existing.data;
+        var cloudData = await supabaseGetData(session);
+        if (cloudData && cloudData.records && cloudData.records.length > 0) {
+            DATA = cloudData;
             saveData();
             toast('已从云端同步数据');
         } else {
-            // 云端无数据，上传本地
             await syncToCloud();
             toast('本地数据已上传云端');
         }
@@ -1335,6 +1370,15 @@ saveData = function() {
     syncToCloud();
 };
 
+// 页面加载时自动恢复 session
+async function autoRestoreSession() {
+    var session = await getCurrentSession();
+    if (session && !isLoggedIn()) {
+        localStorage.setItem('sulong_account_email', session.user.email);
+        localStorage.setItem('sulong_account_uid', session.user.id);
+    }
+}
+
 // 
 // ============ 初始化 ============
 function init() {
@@ -1349,6 +1393,8 @@ function init() {
     // 分隔线小恐龙
         renderHome();
     updateAccountUI();
+    // 自动恢复 Supabase session
+    autoRestoreSession().then(function() { updateAccountUI(); });
 }
 
 // 点击遮罩关闭模态框
