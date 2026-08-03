@@ -8,7 +8,6 @@
     <meta name="apple-mobile-web-app-title" content="记账本">
     <meta name="theme-color" content="#fed0d6">
     <title>记账本</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
         :root{
@@ -384,6 +383,7 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ============ SVG 图标定义（手绘可爱风 + 素龙元素）============
 const SVG_ICONS = {
@@ -1192,7 +1192,13 @@ function showClearConfirm() {
 const SUPABASE_URL = 'https://ubgzyktumjbnovxdiynz.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_Y6eNcCD7GFtlYKj3Hfh4Sw_dRrgHREr';
 const SUPABASE_TABLE = 'user_data';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+var supabase = null;
+function getSupabase() {
+    if (!supabase && window.supabase) {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    }
+    return supabase;
+}
 
 let authMode = 'login'; // 'login' | 'register'
 
@@ -1200,7 +1206,7 @@ function getEmail() { return localStorage.getItem('sulong_account_email'); }
 function isLoggedIn() { return !!getEmail(); }
 
 async function getCurrentSession() {
-    var { data } = await supabase.auth.getSession();
+    var { data } = await getSupabase().auth.getSession();
     return data.session;
 }
 
@@ -1261,7 +1267,7 @@ async function doLogin() {
     try {
         var result;
         if (authMode === 'register') {
-            result = await supabase.auth.signUp({ email: email, password: password });
+            result = await getSupabase().auth.signUp({ email: email, password: password });
             if (result.error) throw result.error;
             if (result.data.user && result.data.session) {
                 // 邮箱已确认或未开启邮箱确认，直接登录
@@ -1273,7 +1279,7 @@ async function doLogin() {
                 return;
             }
         } else {
-            result = await supabase.auth.signInWithPassword({ email: email, password: password });
+            result = await getSupabase().auth.signInWithPassword({ email: email, password: password });
             if (result.error) throw result.error;
             onLoginSuccess(email, result.data.session);
         }
@@ -1304,7 +1310,7 @@ async function onLoginSuccess(email, session) {
 function showAccountMenu() {
     var email = getEmail();
     showConfirm('账户管理', email + '\n\n确定退出登录吗？', async function() {
-        await supabase.auth.signOut();
+        await getSupabase().auth.signOut();
         localStorage.removeItem('sulong_account_email');
         localStorage.removeItem('sulong_account_uid');
         updateAccountUI();
@@ -1317,7 +1323,7 @@ function showAccountMenu() {
 async function supabaseGetData(session) {
     var uid = session ? session.user.id : localStorage.getItem('sulong_account_uid');
     if (!uid) return null;
-    var { data, error } = await supabase.from(SUPABASE_TABLE).select('payload, updated_at').eq('user_id', uid).single();
+    var { data, error } = await getSupabase().from(SUPABASE_TABLE).select('payload, updated_at').eq('user_id', uid).single();
     if (error && error.code !== 'PGRST116') { console.log('读取云端失败', error); return null; }
     if (!data) return null;
     return data.payload;
@@ -1327,7 +1333,7 @@ async function supabaseGetData(session) {
 async function supabasePutData(session, payload) {
     var uid = session ? session.user.id : localStorage.getItem('sulong_account_uid');
     if (!uid) return;
-    var { error } = await supabase.from(SUPABASE_TABLE).upsert({
+    var { error } = await getSupabase().from(SUPABASE_TABLE).upsert({
         user_id: uid,
         payload: payload,
         updated_at: new Date().toISOString()
