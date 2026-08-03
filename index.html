@@ -1206,8 +1206,12 @@ function getEmail() { return localStorage.getItem('sulong_account_email'); }
 function isLoggedIn() { return !!getEmail(); }
 
 async function getCurrentSession() {
-    var { data } = await getSupabase().auth.getSession();
-    return data.session;
+    var sb = getSupabase();
+    if (!sb) return null;
+    try {
+        var { data } = await sb.auth.getSession();
+        return data.session;
+    } catch(e) { return null; }
 }
 
 function updateAccountUI() {
@@ -1254,6 +1258,8 @@ function toggleAuthMode() {
 }
 
 async function doLogin() {
+    var sb = getSupabase();
+    if (!sb) { toast('SDK 加载中，请稍后重试'); return; }
     var email = document.getElementById('loginEmail').value.trim();
     var password = document.getElementById('loginPassword').value.trim();
     if (!email) { toast('请输入邮箱地址'); return; }
@@ -1267,10 +1273,9 @@ async function doLogin() {
     try {
         var result;
         if (authMode === 'register') {
-            result = await getSupabase().auth.signUp({ email: email, password: password });
+            result = await sb.auth.signUp({ email: email, password: password });
             if (result.error) throw result.error;
             if (result.data.user && result.data.session) {
-                // 邮箱已确认或未开启邮箱确认，直接登录
                 onLoginSuccess(email, result.data.session);
             } else {
                 toast('注册成功！请检查邮箱确认链接（如未收到请查看垃圾邮件）');
@@ -1279,7 +1284,7 @@ async function doLogin() {
                 return;
             }
         } else {
-            result = await getSupabase().auth.signInWithPassword({ email: email, password: password });
+            result = await sb.auth.signInWithPassword({ email: email, password: password });
             if (result.error) throw result.error;
             onLoginSuccess(email, result.data.session);
         }
@@ -1310,7 +1315,8 @@ async function onLoginSuccess(email, session) {
 function showAccountMenu() {
     var email = getEmail();
     showConfirm('账户管理', email + '\n\n确定退出登录吗？', async function() {
-        await getSupabase().auth.signOut();
+    var sb = getSupabase();
+    if (sb) { try { await sb.auth.signOut(); } catch(e) {} }
         localStorage.removeItem('sulong_account_email');
         localStorage.removeItem('sulong_account_uid');
         updateAccountUI();
@@ -1321,9 +1327,11 @@ function showAccountMenu() {
 
 // Supabase: 读取云端数据
 async function supabaseGetData(session) {
+    var sb = getSupabase();
+    if (!sb) return null;
     var uid = session ? session.user.id : localStorage.getItem('sulong_account_uid');
     if (!uid) return null;
-    var { data, error } = await getSupabase().from(SUPABASE_TABLE).select('payload, updated_at').eq('user_id', uid).single();
+    var { data, error } = await sb.from(SUPABASE_TABLE).select('payload, updated_at').eq('user_id', uid).single();
     if (error && error.code !== 'PGRST116') { console.log('读取云端失败', error); return null; }
     if (!data) return null;
     return data.payload;
@@ -1331,9 +1339,11 @@ async function supabaseGetData(session) {
 
 // Supabase: 写入云端数据
 async function supabasePutData(session, payload) {
+    var sb = getSupabase();
+    if (!sb) return;
     var uid = session ? session.user.id : localStorage.getItem('sulong_account_uid');
     if (!uid) return;
-    var { error } = await getSupabase().from(SUPABASE_TABLE).upsert({
+    var { error } = await sb.from(SUPABASE_TABLE).upsert({
         user_id: uid,
         payload: payload,
         updated_at: new Date().toISOString()
