@@ -201,7 +201,6 @@
         <div class="overview-row">
             <div class="overview-item income"><div class="label">收入</div><div class="value" id="totalIncome">¥0.00</div></div>
             <div class="overview-item expense"><div class="label">支出</div><div class="value" id="totalExpense">¥0.00</div></div>
-            <div class="overview-item balance"><div class="label">结余</div><div class="value" id="totalBalance">¥0.00</div></div>
         </div>
     </div>
         <div class="section">
@@ -622,7 +621,6 @@ function renderHome() {
     });
     document.getElementById('totalIncome').textContent = formatMoney(income);
     document.getElementById('totalExpense').textContent = formatMoney(expense);
-    document.getElementById('totalBalance').textContent = formatMoney(income - expense);
     renderChart(monthRecords);
     renderRecordList(monthRecords);
 }
