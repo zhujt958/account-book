@@ -371,12 +371,10 @@
 <div class="modal-overlay" id="loginModal">
     <div class="modal">
         <div class="modal-header"><div class="modal-title">登录账户</div><button class="modal-close" onclick="closeLoginModal()">×</button></div>
-        <div class="form-group"><label class="form-label">邮箱</label><input type="email" class="form-input" id="loginEmail" placeholder="输入邮箱地址..." inputmode="email"></div>
-        <div class="form-group" style="display:none" id="codeGroup"><label class="form-label">验证码</label>
-            <div style="display:flex;gap:8px"><input type="text" class="form-input" id="loginCode" placeholder="6位验证码" maxlength="6" inputmode="numeric" style="flex:1"><button class="btn btn-secondary" style="flex:0 0 auto;padding:12px 16px;font-size:13px;white-space:nowrap" id="resendBtn" onclick="sendCode(true)" disabled>60s</button></div>
-        </div>
+        <div class="form-group"><label class="form-label">GitHub Token</label><input type="text" class="form-input" id="loginEmail" placeholder="粘贴你的 GitHub Token..." style="font-size:13px"></div>
+
         <div class="form-actions"><button class="btn btn-primary" id="loginBtn" onclick="loginStep()">发送验证码</button></div>
-        <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--text-hint)">登录后数据将自动同步到云端</div>
+        <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--text-hint)">Token 仅存于本地浏览器，数据同步到你的 GitHub 私有仓库</div>
     </div>
 </div>
 
@@ -1186,12 +1184,13 @@ function showClearConfirm() {
 }
 
 
-// ============ 账户系统 ============
-const API_BASE = 'https://account-book-api.YOUR_SUBDOMAIN.workers.dev';
-const TOKEN_KEY = 'sulong_account_token';
-const EMAIL_KEY = 'sulong_account_email';
-let loginStepState = 'email'; // 'email' or 'code'
-let resendTimer = null;
+// ============ 账户系统（GitHub 仓库存储方案）============
+// 数据存在 GitHub 私有仓库的 JSON 文件中，用 Token 认证
+const GITHUB_REPO = 'zhujt958/account-book';  // 你的仓库
+const GITHUB_DATA_FILE = 'user_data.json';     // 数据文件名
+const TOKEN_KEY = 'sulong_account_token';      // 存 GitHub Token
+const EMAIL_KEY = 'sulong_account_email';      // 存邮箱（仅显示用）
+let loginStepState = 'email';
 
 function getToken() { return localStorage.getItem(TOKEN_KEY); }
 function getEmail() { return localStorage.getItem(EMAIL_KEY); }
@@ -1200,124 +1199,59 @@ function isLoggedIn() { return !!getToken(); }
 function updateAccountUI() {
     var item = document.getElementById('accountItem');
     var label = document.getElementById('accountLabel');
+    var storageType = document.getElementById('storageType');
     if (isLoggedIn()) {
-        var email = getEmail();
-        label.textContent = email;
+        label.textContent = getEmail() || '已登录';
         item.onclick = showAccountMenu;
+        if (storageType) storageType.textContent = '云端同步';
     } else {
         label.textContent = '登录账户';
         item.onclick = openLoginModal;
+        if (storageType) storageType.textContent = '本地浏览器';
     }
 }
 
 function openLoginModal() {
-    loginStepState = 'email';
+    loginStepState = 'token';
     document.getElementById('loginEmail').value = '';
-    document.getElementById('loginCode').value = '';
-    document.getElementById('codeGroup').style.display = 'none';
-    document.getElementById('loginBtn').textContent = '发送验证码';
+        document.getElementById('loginBtn').textContent = '登录';
     document.getElementById('loginModal').classList.add('show');
 }
 
 function closeLoginModal() {
     document.getElementById('loginModal').classList.remove('show');
-    if (resendTimer) { clearInterval(resendTimer); resendTimer = null; }
 }
 
-function loginStep() {
-    if (loginStepState === 'email') {
-        sendCode(false);
-    } else {
-        verifyAndLogin();
-    }
-}
-
-async function sendCode(isResend) {
-    var email = document.getElementById('loginEmail').value.trim();
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        toast('请输入有效邮箱');
-        return;
-    }
+async function loginStep() {
+    var token = document.getElementById('loginEmail').value.trim();
+    if (!token || token.length < 20) { toast('请输入有效的 GitHub Token'); return; }
     var btn = document.getElementById('loginBtn');
     btn.disabled = true;
-    btn.textContent = '发送中...';
+    btn.textContent = '验证中...';
     try {
-        var res = await fetch(API_BASE + '/api/send-code', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: email })
+        // 用 Token 获取用户信息来验证
+        var res = await fetch('https://api.github.com/user', {
+            headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github.v3+json' }
         });
-        var result = await res.json();
-        if (result.success) {
-            toast('验证码已发送');
-            loginStepState = 'code';
-            document.getElementById('codeGroup').style.display = 'block';
-            document.getElementById('loginBtn').textContent = '登录';
-            document.getElementById('loginBtn').disabled = false;
-            startResendCountdown();
-            document.getElementById('loginCode').focus();
-        } else {
-            toast(result.error || '发送失败');
-            btn.disabled = false;
-            btn.textContent = '发送验证码';
-        }
-    } catch(e) {
-        toast('网络错误，请检查API配置');
-        btn.disabled = false;
-        btn.textContent = '发送验证码';
-    }
-}
-
-function startResendCountdown() {
-    var seconds = 60;
-    var btn = document.getElementById('resendBtn');
-    btn.disabled = true;
-    btn.textContent = seconds + 's';
-    resendTimer = setInterval(function() {
-        seconds--;
-        btn.textContent = seconds + 's';
-        if (seconds <= 0) {
-            clearInterval(resendTimer);
-            resendTimer = null;
-            btn.disabled = false;
-            btn.textContent = '重新发送';
-        }
-    }, 1000);
-}
-
-async function verifyAndLogin() {
-    var email = document.getElementById('loginEmail').value.trim();
-    var code = document.getElementById('loginCode').value.trim();
-    if (!code || code.length !== 6) { toast('请输入6位验证码'); return; }
-    var btn = document.getElementById('loginBtn');
-    btn.disabled = true;
-    btn.textContent = '登录中...';
-    try {
-        var res = await fetch(API_BASE + '/api/verify-code', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: email, code: code })
-        });
-        var result = await res.json();
-        if (result.success) {
-            localStorage.setItem(TOKEN_KEY, result.token);
-            localStorage.setItem(EMAIL_KEY, email);
+        if (res.ok) {
+            var user = await res.json();
+            localStorage.setItem(TOKEN_KEY, token);
+            localStorage.setItem(EMAIL_KEY, user.login || user.name || '已登录');
             closeLoginModal();
             toast('登录成功，正在同步数据...');
             btn.disabled = false;
-            btn.textContent = '发送验证码';
-            // 同步数据
+            btn.textContent = '登录';
             await syncDataOnLogin();
             updateAccountUI();
             renderHome();
             if (STATE.currentPage === 'plans') renderPlans();
         } else {
-            toast(result.error || '验证失败');
+            toast('Token 无效，请检查');
             btn.disabled = false;
             btn.textContent = '登录';
         }
     } catch(e) {
-        toast('网络错误');
+        toast('网络错误，请重试');
         btn.disabled = false;
         btn.textContent = '登录';
     }
@@ -1325,8 +1259,7 @@ async function verifyAndLogin() {
 
 function showAccountMenu() {
     var email = getEmail();
-    showConfirm('账户管理', email + '\n\n选择操作：', function() {
-        // 退出登录
+    showConfirm('账户管理', email + '\n\n确定退出登录吗？', function() {
         localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(EMAIL_KEY);
         updateAccountUI();
@@ -1335,51 +1268,74 @@ function showAccountMenu() {
     document.getElementById('confirmOkBtn').textContent = '退出登录';
 }
 
+// GitHub API: 读取数据文件
+async function githubGetFile(token) {
+    var res = await fetch('https://api.github.com/repos/' + GITHUB_REPO + '/contents/' + GITHUB_DATA_FILE, {
+        headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (res.status === 404) return null; // 文件不存在
+    if (!res.ok) throw new Error('读取失败: ' + res.status);
+    var data = await res.json();
+    // content 是 base64 编码
+    var content = atob(data.content.replace(/\n/g, ''));
+    return { sha: data.sha, data: JSON.parse(content) };
+}
+
+// GitHub API: 写入数据文件
+async function githubPutFile(token, data, sha) {
+    var content = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+    var body = { message: 'sync data ' + new Date().toISOString(), content: content };
+    if (sha) body.sha = sha;
+    var res = await fetch('https://api.github.com/repos/' + GITHUB_REPO + '/contents/' + GITHUB_DATA_FILE, {
+        method: 'PUT',
+        headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error('写入失败: ' + res.status);
+    return await res.json();
+}
+
+var _syncLock = false;
 async function syncToCloud() {
-    if (!isLoggedIn()) return;
+    if (!isLoggedIn() || _syncLock) return;
+    _syncLock = true;
     try {
-        await fetch(API_BASE + '/api/sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
-            body: JSON.stringify({ data: DATA })
-        });
+        var token = getToken();
+        var existing = await githubGetFile(token);
+        var sha = existing ? existing.sha : null;
+        await githubPutFile(token, DATA, sha);
     } catch(e) { console.log('同步失败', e); }
+    _syncLock = false;
 }
 
 async function syncDataOnLogin() {
     if (!isLoggedIn()) return;
     try {
-        // 先拉取云端数据
-        var res = await fetch(API_BASE + '/api/sync', {
-            headers: { 'Authorization': 'Bearer ' + getToken() }
-        });
-        var result = await res.json();
-        if (result.success && result.data) {
-            // 合并：云端有数据且本地也有数据时，用云端覆盖（首次登录以本地为准）
-            // 这里策略：如果云端有数据，用云端覆盖本地；如果云端没有，上传本地
-            var cloudData = result.data;
-            if (cloudData.records && cloudData.records.length > 0) {
-                DATA = cloudData;
-                saveData();
-            } else {
-                // 云端为空，上传本地数据
-                await syncToCloud();
-            }
+        var token = getToken();
+        var existing = await githubGetFile(token);
+        if (existing && existing.data && existing.data.records && existing.data.records.length > 0) {
+            // 云端有数据，拉取到本地
+            DATA = existing.data;
+            saveData();
+            toast('已从云端同步数据');
         } else {
             // 云端无数据，上传本地
             await syncToCloud();
+            toast('本地数据已上传云端');
         }
-    } catch(e) { console.log('同步失败', e); }
+    } catch(e) {
+        console.log('同步失败', e);
+        toast('同步失败，稍后重试');
+    }
 }
 
-// 修改 saveData，加入云同步
-var _originalSaveData = saveData;
+// 覆盖 saveData，加入云同步
 saveData = function() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA));
-    syncToCloud(); // 异步同步到云端，不阻塞
+    syncToCloud();
 };
 
-
+// 
 // ============ 初始化 ============
 function init() {
     loadData();
