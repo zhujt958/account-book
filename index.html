@@ -474,6 +474,20 @@ function loadData() {
     if (!DATA.plans) DATA.plans = [];
     if (!DATA.customCategories) DATA.customCategories = [];
     if (!DATA.customTags) DATA.customTags = [];
+    // 历史数据迁移：旧标签替换
+    migrateOldTags();
+}
+function migrateOldTags() {
+    var changed = false;
+    (DATA.records || []).forEach(function(r) {
+        if (r.tag === '生存必要支出') { r.tag = '必要支出'; changed = true; }
+        if (r.tag === '浮动弹性支出') { r.tag = '弹性支出'; changed = true; }
+    });
+    (DATA.customTags || []).forEach(function(t, i) {
+        if (t === '生存必要支出') { DATA.customTags[i] = '必要支出'; changed = true; }
+        if (t === '浮动弹性支出') { DATA.customTags[i] = '弹性支出'; changed = true; }
+    });
+    if (changed) localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA));
 }
 function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); }
 
