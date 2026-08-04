@@ -494,7 +494,7 @@ const DEFAULT_CATEGORIES = {
         { name: '其它', icon: 'otherIncome' }
     ]
 };
-const DEFAULT_TAGS = ['生存必要支出', '浮动弹性支出'];
+const DEFAULT_TAGS = ['必要支出', '弹性支出'];
 const CUSTOM_ICON_OPTIONS = ['balloon', 'sun', 'flower', 'envelope', 'icecream', 'drink', 'bear', 'tulip', 'tv', 'house', 'cloud', 'wand', 'food', 'shopping', 'entertainment', 'other'];
 
 function getCategories(type) {
@@ -800,8 +800,8 @@ function renderRecordList(records) {
                 var iconBg = r.type === 'expense' ? '#f8ebbd' : '#e8f0e8';
                 var tagBadge = '';
                 if (r.type === 'expense' && r.tag) {
-                    var tagBg = r.tag === '生存必要支出' ? '#e8f0e8' : '#fff4e8';
-                    var tagColor = r.tag === '生存必要支出' ? 'var(--morandi-green-deep)' : 'var(--morandi-coral-deep)';
+                    var tagBg = r.tag === '必要支出' ? '#e8f0e8' : '#fff4e8';
+                    var tagColor = r.tag === '必要支出' ? 'var(--morandi-green-deep)' : 'var(--morandi-coral-deep)';
                     tagBadge = '<span class="record-tag-badge" style="background:' + tagBg + ';color:' + tagColor + '">' + r.tag + '</span>';
                 }
                 var time = r.date.substring(11, 16);
