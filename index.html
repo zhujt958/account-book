@@ -63,6 +63,14 @@
         .chart-tab{flex:1;padding:9px;border:none;background:transparent;border-radius:10px;font-size:13px;font-weight:600;color:var(--text-hint);cursor:pointer;transition:all 0.2s}
         .chart-tab.active{background:var(--card-bg);color:#c97a72;box-shadow:0 2px 8px rgba(90,74,78,0.08)}
         .record-list{background:var(--card-bg);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+        .day-group{padding:0}
+        .day-group-divider{border-top:1px solid var(--border);margin-top:14px}
+        .day-header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px 8px;font-size:13px;color:var(--text-secondary);font-weight:600}
+        .day-header-left{display:flex;align-items:baseline;gap:6px}
+        .day-num{font-size:15px;font-weight:700;color:var(--text-primary)}
+        .day-label{font-size:12px;color:var(--text-hint);font-weight:500}
+        .day-summary{font-size:12px;color:var(--text-hint);font-weight:500}
+        .day-items{padding:0}
         .record-item{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s}
         .record-item:active{background:#faf8f6}
         .record-item:last-child{border-bottom:none}
@@ -752,23 +760,62 @@ function renderRecordList(records) {
     }
     records.sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
     countEl.textContent = '共' + records.length + '笔';
-    list.innerHTML = records.map(function(r) {
-        var icon = getCategoryIcon(r.category, r.type);
-        var iconBg = r.type === 'expense' ? '#f8ebbd' : '#e8f0e8';
-        var tagBadge = '';
-        if (r.type === 'expense' && r.tag) {
-            var tagBg = r.tag === '生存必要支出' ? '#e8f0e8' : '#fff4e8';
-            var tagColor = r.tag === '生存必要支出' ? 'var(--morandi-green-deep)' : 'var(--morandi-coral-deep)';
-            tagBadge = '<span class="record-tag-badge" style="background:' + tagBg + ';color:' + tagColor + '">' + r.tag + '</span>';
+
+    // 按日期分组
+    var groups = {};
+    var groupOrder = [];
+    records.forEach(function(r) {
+        var d = r.date.substring(0, 10); // YYYY-MM-DD
+        if (!groups[d]) { groups[d] = []; groupOrder.push(d); }
+        groups[d].push(r);
+    });
+
+    var html = '';
+    var today = new Date().toISOString().substring(0, 10);
+    var yesterday = (function() { var d = new Date(); d.setDate(d.getDate() - 1); return d.toISOString().substring(0, 10); })();
+
+    groupOrder.forEach(function(date, idx) {
+        var items = groups[date];
+        var dayExpense = 0, dayIncome = 0;
+        items.forEach(function(r) {
+            if (r.type === 'expense') dayExpense += r.amount;
+            else dayIncome += r.amount;
+        });
+        var label;
+        if (date === today) label = '今天';
+        else if (date === yesterday) label = '昨天';
+        else {
+            var d = new Date(date);
+            label = (d.getMonth() + 1) + '月' + d.getDate() + '日';
         }
-        var noteHtml = r.note ? '<span class="record-note">· ' + r.note + '</span>' : '';
-        return '<div class="record-item" onclick="editRecord(\'' + r.id + '\')">' +
-            '<div class="record-icon" style="background:' + iconBg + '">' + (SVG_ICONS[icon] || SVG_ICONS.other) + '</div>' +
-            '<div class="record-info"><div class="record-category">' + r.category + tagBadge + '</div>' +
-            '<div class="record-meta"><span>' + formatDate(r.date) + '</span>' + noteHtml + '</div></div>' +
-            '<div class="record-amount ' + r.type + '">' + (r.type === 'expense' ? '-' : '+') + formatMoney(r.amount) + '</div>' +
-            '</div>';
-    }).join('');
+        var md = date.substring(5).replace('-', '.');
+        var summary = '支 ' + formatMoney(dayExpense) + '  收 ' + formatMoney(dayIncome);
+
+        html += '<div class="day-group' + (idx > 0 ? ' day-group-divider' : '') + '">' +
+            '<div class="day-header"><div class="day-header-left"><span class="day-num">' + md + '</span><span class="day-label">' + label + '</span></div>' +
+            '<div class="day-summary">' + summary + '</div></div>' +
+            '<div class="day-items">' +
+            items.map(function(r) {
+                var icon = getCategoryIcon(r.category, r.type);
+                var iconBg = r.type === 'expense' ? '#f8ebbd' : '#e8f0e8';
+                var tagBadge = '';
+                if (r.type === 'expense' && r.tag) {
+                    var tagBg = r.tag === '生存必要支出' ? '#e8f0e8' : '#fff4e8';
+                    var tagColor = r.tag === '生存必要支出' ? 'var(--morandi-green-deep)' : 'var(--morandi-coral-deep)';
+                    tagBadge = '<span class="record-tag-badge" style="background:' + tagBg + ';color:' + tagColor + '">' + r.tag + '</span>';
+                }
+                var time = r.date.substring(11, 16);
+                var noteHtml = r.note ? '<span class="record-note">| ' + r.note + '</span>' : '';
+                return '<div class="record-item" onclick="editRecord(\'' + r.id + '\')">' +
+                    '<div class="record-icon" style="background:' + iconBg + '">' + (SVG_ICONS[icon] || SVG_ICONS.other) + '</div>' +
+                    '<div class="record-info"><div class="record-category">' + r.category + tagBadge + '</div>' +
+                    '<div class="record-meta"><span>' + time + '</span>' + noteHtml + '</div></div>' +
+                    '<div class="record-amount ' + r.type + '">' + (r.type === 'expense' ? '-' : '+') + formatMoney(r.amount) + '</div>' +
+                    '</div>';
+            }).join('') +
+            '</div></div>';
+    });
+    list.innerHTML = html;
 }
 
 
